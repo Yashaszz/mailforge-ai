@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mailforge AI — Email Fraud Detection &amp; Forensic Tracing</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="brand-mark" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+        <path d="M9 12l2 2 4-4"></path>
+      </svg>
+    </div>
+    <div class="brand-text">
+      <h1>Mailforge<span>AI</span></h1>
+      <p>Email fraud detection &amp; forensic tracing</p>
+    </div>
+  </div>
+  <div class="topbar-meta">
+    <div class="chip">SIH 2026 · PS 26106</div>
+    <div class="chip">Team SNPSU Zyronix</div>
+    <div class="status" id="status"><span class="dot"></span><span id="status-text">connecting…</span></div>
+  </div>
+</header>
+
+<main class="layout">
+
+  <!-- ── input column ─────────────────────────────────────────── -->
+  <aside class="panel sidebar">
+    <section>
+      <h2 class="section-title">Demo scenarios</h2>
+      <p class="section-hint">Three messages covering the outcomes Layer&nbsp;1 must separate.</p>
+      <div id="samples" class="samples">
+        <div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>
+      </div>
+    </section>
+
+    <section>
+      <h2 class="section-title">Analyse your own</h2>
+      <div class="dropzone" id="dropzone" tabindex="0" role="button"
+           aria-label="Upload an .eml file">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <path d="M7 10l5-5 5 5"/><path d="M12 5v12"/>
+        </svg>
+        <strong>Drop a <code>.eml</code> file</strong>
+        <span>or click to browse</span>
+        <input type="file" id="file-input" accept=".eml,message/rfc822,text/plain" hidden>
+      </div>
+
+      <details class="paste">
+        <summary>Paste raw message source</summary>
+        <textarea id="paste-area" rows="7" spellcheck="false"
+          placeholder="Received: from ...&#10;From: ...&#10;Subject: ...&#10;&#10;body"></textarea>
+        <button class="btn btn-secondary" id="paste-btn">Analyse pasted source</button>
+      </details>
+    </section>
+  </aside>
+
+  <!-- ── results column ───────────────────────────────────────── -->
+  <section class="results" id="results">
+
+    <div class="empty" id="empty-state">
+      <div class="empty-art" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+          <rect x="2" y="4" width="20" height="16" rx="2"/><path d="m2 7 10 6 10-6"/>
+        </svg>
+      </div>
+      <h2>Select a scenario to begin</h2>
+      <p>Mailforge reconstructs the SMTP envelope from the message headers, verifies
+         SPF, DKIM and DMARC against live DNS, and scores the result into an
+         analyst verdict.</p>
+    </div>
+
+    <div class="loading" id="loading" hidden>
+      <div class="spinner"></div>
+      <p id="loading-text">Analysing message…</p>
+      <ul class="loading-steps">
+        <li>Parsing headers &amp; relay chain</li>
+        <li>Verifying SPF / DKIM / DMARC</li>
+        <li>Scoring risk indicators</li>
+      </ul>
+    </div>
+
+    <div class="error" id="error" hidden>
+      <h2>Analysis failed</h2>
+      <p id="error-text"></p>
+    </div>
+
+    <article id="report" hidden>
+
+      <!-- verdict -->
+      <div class="panel verdict" id="verdict">
+        <div class="gauge">
+          <svg viewBox="0 0 120 120">
+            <circle class="gauge-track" cx="60" cy="60" r="52"/>
+            <circle class="gauge-value" id="gauge-arc" cx="60" cy="60" r="52"/>
+          </svg>
+          <div class="gauge-label">
+            <span class="gauge-score" id="score">0</span>
+            <span class="gauge-of">risk score</span>
+          </div>
+        </div>
+        <div class="verdict-body">
+          <div class="verdict-head">
+            <span class="level" id="level">—</span>
+            <span class="confidence" id="confidence"></span>
+          </div>
+          <p class="verdict-summary" id="summary"></p>
+          <div class="verdict-file">
+            <span id="filename"></span>
+            <span class="sep">·</span>
+            <span id="filesize"></span>
+            <span class="sep">·</span>
+            <span id="subject-line"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- authentication -->
+      <h2 class="block-title">Layer 1 — Authentication</h2>
+      <div class="auth-grid" id="auth-grid"></div>
+      <p class="dns-note" id="dns-note" hidden></p>
+
+      <!-- reasons -->
+      <h2 class="block-title">Why this verdict</h2>
+      <div class="panel reasons" id="reasons"></div>
+
+      <div class="two-col">
+        <!-- sender -->
+        <div>
+          <h2 class="block-title">Sender &amp; origin</h2>
+          <div class="panel kv" id="sender"></div>
+        </div>
+        <!-- relay path -->
+        <div>
+          <h2 class="block-title">Relay path <span class="muted-tag" id="hop-count"></span></h2>
+          <div class="panel relay" id="relay"></div>
+        </div>
+      </div>
+
+      <!-- warnings -->
+      <div id="warnings-wrap" hidden>
+        <h2 class="block-title">Analysis caveats</h2>
+        <div class="panel warnings" id="warnings"></div>
+      </div>
+
+      <!-- raw -->
+      <h2 class="block-title">Evidence</h2>
+      <div class="panel raw">
+        <details>
+          <summary>All headers <span class="muted-tag" id="header-count"></span></summary>
+          <div class="table-scroll"><table class="headers" id="headers"></table></div>
+        </details>
+        <details>
+          <summary>Receiving MTA's own verdict</summary>
+          <pre id="mta-results" class="pre"></pre>
+        </details>
+        <details>
+          <summary>Full JSON response</summary>
+          <pre id="raw-json" class="pre"></pre>
+        </details>
+      </div>
+
+    </article>
+  </section>
+</main>
+
+<footer class="footer">
+  <span>Mailforge AI — Smart India Hackathon 2026, Problem Statement 26106</span>
+  <span>Layer 1 operational · Layers 2 &amp; 3 in development</span>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>
