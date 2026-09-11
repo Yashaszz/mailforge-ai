@@ -1,57 +1,128 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="midnight" data-accent="amber" data-density="comfortable">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Mailforge AI — Email Fraud Detection &amp; Forensic Tracing</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>">
 </head>
 <body>
 
+<!-- ambient layers -->
+<canvas id="bg-canvas" aria-hidden="true"></canvas>
+<div class="grain" aria-hidden="true"></div>
+<div class="cursor-glow" id="cursor-glow" aria-hidden="true"></div>
+<div class="scroll-progress" id="scroll-progress" aria-hidden="true"></div>
+
 <header class="topbar">
   <div class="brand">
     <div class="brand-mark" aria-hidden="true">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
         <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
         <path d="M9 12l2 2 4-4"></path>
       </svg>
     </div>
     <div class="brand-text">
-      <h1>Mailforge<span>AI</span></h1>
+      <h1>Mailforge<span>&nbsp;AI</span></h1>
       <p>Email fraud detection &amp; forensic tracing</p>
     </div>
   </div>
+
   <div class="topbar-meta">
     <div class="chip">SIH 2026 · PS 26106</div>
-    <div class="chip">Team SNPSU Zyronix</div>
+    <div class="chip chip-team">Team SNPSU Zyronix</div>
     <div class="status" id="status"><span class="dot"></span><span id="status-text">connecting…</span></div>
+    <button class="icon-btn" id="settings-toggle" aria-label="Open appearance settings" title="Appearance">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+      </svg>
+    </button>
   </div>
 </header>
 
+<!-- ── appearance panel ─────────────────────────────────────── -->
+<div class="scrim" id="scrim" hidden></div>
+<aside class="settings" id="settings" hidden aria-label="Appearance settings">
+  <div class="settings-head">
+    <h2>Appearance</h2>
+    <button class="icon-btn" id="settings-close" aria-label="Close settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <path d="M18 6 6 18M6 6l12 12"/>
+      </svg>
+    </button>
+  </div>
+
+  <div class="setting">
+    <label>Theme</label>
+    <div class="swatches" id="theme-swatches">
+      <button data-theme-value="midnight" class="swatch theme-midnight"><span></span>Midnight</button>
+      <button data-theme-value="graphite" class="swatch theme-graphite"><span></span>Graphite</button>
+      <button data-theme-value="daylight" class="swatch theme-daylight"><span></span>Daylight</button>
+    </div>
+  </div>
+
+  <div class="setting">
+    <label>Accent</label>
+    <div class="accents" id="accent-swatches">
+      <button data-accent-value="amber"   style="--s:#e8a33d" title="Amber"   aria-label="Amber"></button>
+      <button data-accent-value="cyan"    style="--s:#3dc9d3" title="Cyan"    aria-label="Cyan"></button>
+      <button data-accent-value="violet"  style="--s:#9b7bf0" title="Violet"  aria-label="Violet"></button>
+      <button data-accent-value="emerald" style="--s:#45c88a" title="Emerald" aria-label="Emerald"></button>
+      <button data-accent-value="rose"    style="--s:#ef7a85" title="Rose"    aria-label="Rose"></button>
+    </div>
+  </div>
+
+  <div class="setting">
+    <label>Density</label>
+    <div class="segmented" id="density-seg">
+      <button data-density-value="comfortable">Comfortable</button>
+      <button data-density-value="compact">Compact</button>
+    </div>
+  </div>
+
+  <div class="setting toggle-row">
+    <div><label>Forensic trace wire</label><small>Scroll-linked path through the report</small></div>
+    <button class="toggle" id="wire-toggle" role="switch" aria-checked="true"><span></span></button>
+  </div>
+
+  <div class="setting toggle-row">
+    <div><label>Ambient motion</label><small>Background drift and reveal animation</small></div>
+    <button class="toggle" id="motion-toggle" role="switch" aria-checked="true"><span></span></button>
+  </div>
+
+  <div class="settings-foot">
+    <p>Preferences are stored in this browser only.</p>
+    <button class="btn btn-ghost" id="reset-settings">Reset to defaults</button>
+  </div>
+</aside>
+
+<!-- ── layout ───────────────────────────────────────────────── -->
 <main class="layout">
 
-  <!-- ── input column ─────────────────────────────────────────── -->
-  <aside class="panel sidebar">
-    <section>
+  <aside class="sidebar">
+    <section class="panel pad">
       <h2 class="section-title">Demo scenarios</h2>
       <p class="section-hint">Three messages covering the outcomes Layer&nbsp;1 must separate.</p>
       <div id="samples" class="samples">
         <div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>
       </div>
+      <p class="kbd-hint">Press <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> to switch scenarios</p>
     </section>
 
-    <section>
+    <section class="panel pad">
       <h2 class="section-title">Analyse your own</h2>
-      <div class="dropzone" id="dropzone" tabindex="0" role="button"
-           aria-label="Upload an .eml file">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-          <path d="M7 10l5-5 5 5"/><path d="M12 5v12"/>
-        </svg>
+      <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Upload an .eml file">
+        <div class="dz-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <path d="M7 10l5-5 5 5"/><path d="M12 5v12"/>
+          </svg>
+        </div>
         <strong>Drop a <code>.eml</code> file</strong>
         <span>or click to browse</span>
         <input type="file" id="file-input" accept=".eml,message/rfc822,text/plain" hidden>
@@ -61,117 +132,124 @@
         <summary>Paste raw message source</summary>
         <textarea id="paste-area" rows="7" spellcheck="false"
           placeholder="Received: from ...&#10;From: ...&#10;Subject: ...&#10;&#10;body"></textarea>
-        <button class="btn btn-secondary" id="paste-btn">Analyse pasted source</button>
+        <button class="btn btn-primary" id="paste-btn">Analyse pasted source</button>
       </details>
     </section>
   </aside>
 
-  <!-- ── results column ───────────────────────────────────────── -->
   <section class="results" id="results">
+    <svg class="trace-wire" id="trace-wire" aria-hidden="true"></svg>
 
-    <div class="empty" id="empty-state">
-      <div class="empty-art" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
-          <rect x="2" y="4" width="20" height="16" rx="2"/><path d="m2 7 10 6 10-6"/>
-        </svg>
-      </div>
-      <h2>Select a scenario to begin</h2>
-      <p>Mailforge reconstructs the SMTP envelope from the message headers, verifies
-         SPF, DKIM and DMARC against live DNS, and scores the result into an
-         analyst verdict.</p>
-    </div>
+    <div class="stage" id="stage">
 
-    <div class="loading" id="loading" hidden>
-      <div class="spinner"></div>
-      <p id="loading-text">Analysing message…</p>
-      <ul class="loading-steps">
-        <li>Parsing headers &amp; relay chain</li>
-        <li>Verifying SPF / DKIM / DMARC</li>
-        <li>Scoring risk indicators</li>
-      </ul>
-    </div>
-
-    <div class="error" id="error" hidden>
-      <h2>Analysis failed</h2>
-      <p id="error-text"></p>
-    </div>
-
-    <article id="report" hidden>
-
-      <!-- verdict -->
-      <div class="panel verdict" id="verdict">
-        <div class="gauge">
-          <svg viewBox="0 0 120 120">
-            <circle class="gauge-track" cx="60" cy="60" r="52"/>
-            <circle class="gauge-value" id="gauge-arc" cx="60" cy="60" r="52"/>
+      <div class="empty" id="empty-state">
+        <div class="empty-art" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+            <rect x="2" y="4" width="20" height="16" rx="2.5"/><path d="m2 7.5 10 6 10-6"/>
           </svg>
-          <div class="gauge-label">
-            <span class="gauge-score" id="score">0</span>
-            <span class="gauge-of">risk score</span>
+        </div>
+        <h2>Select a scenario to begin</h2>
+        <p>Mailforge reconstructs the SMTP envelope from the message headers, verifies
+           SPF, DKIM and DMARC against live DNS, and scores the result into an
+           analyst verdict.</p>
+        <div class="empty-stats">
+          <div><b>3</b><span>authentication checks</span></div>
+          <div><b>RFC</b><span>7208 · 6376 · 7489</span></div>
+          <div><b>&lt;1s</b><span>typical analysis</span></div>
+        </div>
+      </div>
+
+      <div class="loading" id="loading" hidden>
+        <div class="pulse-ring"><span></span><span></span><span></span></div>
+        <p id="loading-text">Analysing message…</p>
+        <ul class="loading-steps" id="loading-steps">
+          <li>Parsing headers &amp; relay chain</li>
+          <li>Verifying SPF / DKIM / DMARC</li>
+          <li>Scoring risk indicators</li>
+        </ul>
+      </div>
+
+      <div class="empty error" id="error" hidden>
+        <h2>Analysis failed</h2>
+        <p id="error-text"></p>
+      </div>
+
+      <article id="report" hidden>
+
+        <div class="panel verdict" id="verdict" data-wire-node="Verdict" data-reveal>
+          <div class="gauge">
+            <svg viewBox="0 0 128 128">
+              <circle class="gauge-track" cx="64" cy="64" r="54"/>
+              <circle class="gauge-value" id="gauge-arc" cx="64" cy="64" r="54"/>
+            </svg>
+            <div class="gauge-label">
+              <span class="gauge-score" id="score">0</span>
+              <span class="gauge-of">risk score</span>
+            </div>
+          </div>
+          <div class="verdict-body">
+            <div class="verdict-head">
+              <span class="level" id="level">—</span>
+              <span class="confidence" id="confidence"></span>
+            </div>
+            <p class="verdict-summary" id="summary"></p>
+            <div class="verdict-file">
+              <span id="filename"></span><span class="sep">·</span>
+              <span id="filesize"></span><span class="sep">·</span>
+              <span id="subject-line"></span>
+            </div>
           </div>
         </div>
-        <div class="verdict-body">
-          <div class="verdict-head">
-            <span class="level" id="level">—</span>
-            <span class="confidence" id="confidence"></span>
+
+        <h2 class="block-title" data-wire-node="Authentication" data-reveal>
+          <span>Layer 1 — Authentication</span>
+        </h2>
+        <div class="auth-grid" id="auth-grid" data-reveal></div>
+        <p class="dns-note" id="dns-note" hidden></p>
+
+        <h2 class="block-title" data-wire-node="Reasoning" data-reveal>
+          <span>Why this verdict</span>
+          <button class="link-btn" id="expand-all">Expand all</button>
+        </h2>
+        <div class="panel reasons" id="reasons" data-reveal></div>
+
+        <div class="two-col">
+          <div>
+            <h2 class="block-title" data-wire-node="Sender" data-reveal><span>Sender &amp; origin</span></h2>
+            <div class="panel kv" id="sender" data-reveal></div>
           </div>
-          <p class="verdict-summary" id="summary"></p>
-          <div class="verdict-file">
-            <span id="filename"></span>
-            <span class="sep">·</span>
-            <span id="filesize"></span>
-            <span class="sep">·</span>
-            <span id="subject-line"></span>
+          <div>
+            <h2 class="block-title" data-wire-node="Relay path" data-reveal>
+              <span>Relay path</span> <em class="muted-tag" id="hop-count"></em>
+            </h2>
+            <div class="panel relay" id="relay" data-reveal></div>
           </div>
         </div>
-      </div>
 
-      <!-- authentication -->
-      <h2 class="block-title">Layer 1 — Authentication</h2>
-      <div class="auth-grid" id="auth-grid"></div>
-      <p class="dns-note" id="dns-note" hidden></p>
-
-      <!-- reasons -->
-      <h2 class="block-title">Why this verdict</h2>
-      <div class="panel reasons" id="reasons"></div>
-
-      <div class="two-col">
-        <!-- sender -->
-        <div>
-          <h2 class="block-title">Sender &amp; origin</h2>
-          <div class="panel kv" id="sender"></div>
+        <div id="warnings-wrap" hidden>
+          <h2 class="block-title" data-reveal><span>Analysis caveats</span></h2>
+          <div class="panel warnings" id="warnings" data-reveal></div>
         </div>
-        <!-- relay path -->
-        <div>
-          <h2 class="block-title">Relay path <span class="muted-tag" id="hop-count"></span></h2>
-          <div class="panel relay" id="relay"></div>
+
+        <h2 class="block-title" data-wire-node="Evidence" data-reveal><span>Evidence</span></h2>
+        <div class="panel raw" data-reveal>
+          <details>
+            <summary>All headers <em class="muted-tag" id="header-count"></em></summary>
+            <div class="table-scroll"><table class="headers" id="headers"></table></div>
+          </details>
+          <details>
+            <summary>Receiving MTA's own verdict</summary>
+            <pre id="mta-results" class="pre"></pre>
+          </details>
+          <details>
+            <summary>Full JSON response</summary>
+            <button class="btn btn-ghost copy-btn" id="copy-json">Copy JSON</button>
+            <pre id="raw-json" class="pre"></pre>
+          </details>
         </div>
-      </div>
 
-      <!-- warnings -->
-      <div id="warnings-wrap" hidden>
-        <h2 class="block-title">Analysis caveats</h2>
-        <div class="panel warnings" id="warnings"></div>
-      </div>
-
-      <!-- raw -->
-      <h2 class="block-title">Evidence</h2>
-      <div class="panel raw">
-        <details>
-          <summary>All headers <span class="muted-tag" id="header-count"></span></summary>
-          <div class="table-scroll"><table class="headers" id="headers"></table></div>
-        </details>
-        <details>
-          <summary>Receiving MTA's own verdict</summary>
-          <pre id="mta-results" class="pre"></pre>
-        </details>
-        <details>
-          <summary>Full JSON response</summary>
-          <pre id="raw-json" class="pre"></pre>
-        </details>
-      </div>
-
-    </article>
+      </article>
+    </div>
   </section>
 </main>
 
@@ -179,6 +257,8 @@
   <span>Mailforge AI — Smart India Hackathon 2026, Problem Statement 26106</span>
   <span>Layer 1 operational · Layers 2 &amp; 3 in development</span>
 </footer>
+
+<div class="toast" id="toast" hidden></div>
 
 <script src="app.js"></script>
 </body>
