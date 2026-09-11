@@ -87,9 +87,19 @@ def configure_dns(
     """
     global _resolver
 
-    resolver = dns.resolver.Resolver(configure=True)
+    try:
+        resolver = dns.resolver.Resolver(configure=True)
+    except Exception as exc:
+        # Serverless images do not always ship a usable /etc/resolv.conf, and
+        # dnspython raises rather than falling back. We always set explicit
+        # nameservers below, so an unconfigured resolver is fine.
+        logger.warning("System resolver unavailable (%s); using explicit servers.", exc)
+        resolver = dns.resolver.Resolver(configure=False)
+
     if servers:
         resolver.nameservers = list(servers)
+    if not resolver.nameservers:
+        resolver.nameservers = ["1.1.1.1", "8.8.8.8"]
     resolver.timeout = query_timeout
     resolver.lifetime = lifetime
 

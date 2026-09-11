@@ -1,0 +1,10 @@
+# Vercel installs from the project root; this mirrors backend/requirements.txt.
+# Keep the two in step.
+fastapi>=0.115,<1.0
+python-multipart>=0.0.9
+pydantic>=2.9,<3.0
+pydantic-settings>=2.5,<3.0
+dnspython>=2.6,<3.0
+pyspf>=2.0.14
+dkimpy>=1.1.5
+publicsuffixlist>=1.0.2

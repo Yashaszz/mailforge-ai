@@ -1,0 +1,16 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "functions": {
+    "api/index.py": {
+      "includeFiles": "**"
+    }
+  },
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/api/index" }
+  ],
+  "env": {
+    "MAILFORGE_DNS_QUERY_TIMEOUT": "2",
+    "MAILFORGE_DNS_TIMEOUT": "4",
+    "MAILFORGE_SPF_QUERYTIME": "8"
+  }
+}
