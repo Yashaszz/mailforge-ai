@@ -78,17 +78,32 @@ database — the backend serves the dashboard itself.
 
 ```bash
 git clone https://github.com/Yashaszz/mailforge-ai.git
-cd mailforge-ai/backend
-python -m venv .venv
 ```
 
-**Windows**
+```bash
+cd mailforge-ai/backend
+```
+
+Create the virtual environment. On **Windows** use the `py` launcher — a bare
+`python` often resolves to the Microsoft Store stub and fails:
+
+```bash
+py -3 -m venv .venv
+```
+
+On **macOS / Linux**:
+
+```bash
+python3 -m venv .venv
+```
+
+Activate it — **Windows**:
 
 ```bash
 .venv\Scripts\activate
 ```
 
-**macOS / Linux**
+**macOS / Linux**:
 
 ```bash
 source .venv/bin/activate
