@@ -1,0 +1,26 @@
+Return-Path: <service@paypal.com>
+Received: from mx01.recipient-corp.in (localhost [127.0.0.1])
+	by mx01.recipient-corp.in (Postfix) with ESMTP id 9C4D7E2A1B03
+	for <analyst@recipient-corp.in>; Tue, 9 Sep 2026 03:11:48 +0530 (IST)
+Received: from vps-4471.hosting-unmetered.example (unknown [45.137.22.190])
+	by mx01.recipient-corp.in (Postfix) with ESMTP id 7B1F3A9C2D45
+	for <analyst@recipient-corp.in>; Tue, 9 Sep 2026 03:11:45 +0530 (IST)
+MIME-Version: 1.0
+From: "PayPal Service" <service@paypal.com>
+Reply-To: security-verification@paypa1-account-alerts.example
+To: analyst@recipient-corp.in
+Subject: =?utf-8?B?W0FjdGlvbiBSZXF1aXJlZF0gWW91ciBhY2NvdW50IGhhcyBiZWVuIGxpbWl0ZWQ=?=
+Message-ID: <20260909031145.7B1F3A9C2D45@vps-4471.hosting-unmetered.example>
+Date: Tue, 9 Sep 2026 03:11:40 +0530
+X-Mailer: PHPMailer 6.8.0
+Content-Type: text/html; charset="utf-8"
+
+<html><body>
+<p>Dear Customer,</p>
+<p>We have detected unusual activity on your account. Your access has been
+<b>temporarily limited</b> until you confirm your identity.</p>
+<p><a href="http://paypa1-account-alerts.example/verify?id=8817263">
+Click here to restore your account within 24 hours</a></p>
+<p>Failure to verify will result in permanent suspension.</p>
+<p>PayPal Security Team</p>
+</body></html>

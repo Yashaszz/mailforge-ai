@@ -1,0 +1,27 @@
+Return-Path: <notifications@gmail.com>
+Received: from mx01.recipient-corp.in (localhost [127.0.0.1])
+	by mx01.recipient-corp.in (Postfix) with ESMTP id 4A2B1C3D4E5F
+	for <analyst@recipient-corp.in>; Tue, 9 Sep 2026 14:22:31 +0530 (IST)
+Received: from mail-sor-f41.google.com (mail-sor-f41.google.com [209.85.220.41])
+	by mx01.recipient-corp.in (Postfix) with ESMTPS id 3F9A0B2C1D8E
+	for <analyst@recipient-corp.in>; Tue, 9 Sep 2026 14:22:29 +0530 (IST)
+Authentication-Results: mx01.recipient-corp.in;
+	spf=pass smtp.mailfrom=gmail.com;
+	dmarc=pass header.from=gmail.com
+MIME-Version: 1.0
+From: Priya Sharma <notifications@gmail.com>
+To: analyst@recipient-corp.in
+Subject: Re: Quarterly infrastructure review - notes attached
+Message-ID: <CAF8x_2mQ9vK3tY7nZpLd6Rw@mail.gmail.com>
+Date: Tue, 9 Sep 2026 14:22:25 +0530
+Content-Type: text/plain; charset="UTF-8"
+
+Hi,
+
+Following up on this morning's call - I have put the consolidated notes in
+the shared drive folder. The migration window is still set for the 20th.
+
+Let me know if the revised timeline works on your side.
+
+Thanks,
+Priya

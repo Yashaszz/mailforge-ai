@@ -1,0 +1,29 @@
+Return-Path: <r.kumar@corp-executive-office.example>
+Received: from mx01.recipient-corp.in (localhost [127.0.0.1])
+	by mx01.recipient-corp.in (Postfix) with ESMTP id 2E8A0C1F4B76
+	for <finance@recipient-corp.in>; Wed, 10 Sep 2026 09:58:12 +0530 (IST)
+Received: from smtp.bulk-relay-07.example (smtp.bulk-relay-07.example [193.42.61.118])
+	by mx01.recipient-corp.in (Postfix) with ESMTP id 1D3B9F0A2C58
+	for <finance@recipient-corp.in>; Wed, 10 Sep 2026 09:58:09 +0530 (IST)
+MIME-Version: 1.0
+From: "Rajesh Kumar (CEO)" <r.kumar@corp-executive-office.example>
+Reply-To: rajesh.kumar.office@fastmail-secure.example
+To: finance@recipient-corp.in
+Subject: Urgent - confidential payment before 11am
+Message-ID: <a91f3c7e2d8b4106@bulk-relay-07.example>
+Date: Wed, 10 Sep 2026 09:58:05 +0530
+Content-Type: text/plain; charset="UTF-8"
+
+Are you at your desk?
+
+I am in back-to-back meetings with the acquisition counsel and cannot take
+calls. I need you to process a wire transfer to a new supplier account today
+before 11am. This is strictly confidential - do not discuss it with anyone
+else on the team until the announcement.
+
+Reply here and I will send the beneficiary details immediately.
+
+Regards,
+Rajesh Kumar
+Chief Executive Officer
+Sent from my iPhone
