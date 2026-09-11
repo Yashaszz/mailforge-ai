@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Local configuration and secrets (API keys for VirusTotal / AbuseIPDB etc.)
+.env
+*.local.env
+
+# Phase 2 data files -- large, license-restricted, fetched at setup time
+data/GeoLite2-*.mmdb
+data/corpora/
+
+# Trained model artefacts (Phase 1 step 4)
+models/*.joblib
+models/*.pkl
+
+# Node / frontend (Phase 1 step 6)
+node_modules/
+dist/
+.vite/
+
+# Editors and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

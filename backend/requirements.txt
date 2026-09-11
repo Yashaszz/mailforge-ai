@@ -1,0 +1,14 @@
+# --- Mailforge AI :: backend runtime dependencies ---
+
+# Web framework
+fastapi>=0.115,<1.0
+uvicorn[standard]>=0.32,<1.0
+python-multipart>=0.0.9          # required by FastAPI for multipart file uploads
+pydantic>=2.9,<3.0
+pydantic-settings>=2.5,<3.0
+
+# Layer 1 - email authentication (SPF / DKIM / DMARC)
+dnspython>=2.6,<3.0              # DNS resolution for DMARC records + DKIM keys
+pyspf>=2.0.14                    # RFC 7208 SPF evaluation (imports as `spf`)
+dkimpy>=1.1.5                    # RFC 6376 DKIM signature verification (imports as `dkim`)
+publicsuffixlist>=1.0.2          # organizational-domain lookup for DMARC relaxed alignment
