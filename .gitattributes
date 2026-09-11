@@ -1,0 +1,9 @@
+* text=auto
+
+# Raw messages are wire-format artefacts: CRLF is significant and DKIM body
+# hashes are computed over it. Never let Git rewrite their line endings.
+*.eml -text
+
+# dkimpy parses PEM with a regex that requires LF. Store verbatim.
+*.pem -text
+*.b64 -text
