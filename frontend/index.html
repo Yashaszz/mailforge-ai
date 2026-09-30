@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="styles.css?v=2">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>">
 </head>
 <body>
@@ -226,6 +226,12 @@
           </div>
         </div>
 
+        <h2 class="block-title" data-wire-node="Geolocation" data-reveal>
+          <span>Origin intelligence</span>
+          <em class="muted-tag" id="geo-source"></em>
+        </h2>
+        <div class="panel geo" id="geo" data-reveal></div>
+
         <div id="warnings-wrap" hidden>
           <h2 class="block-title" data-reveal><span>Analysis caveats</span></h2>
           <div class="panel warnings" id="warnings" data-reveal></div>
@@ -260,6 +266,6 @@
 
 <div class="toast" id="toast" hidden></div>
 
-<script src="app.js"></script>
+<script src="app.js?v=2"></script>
 </body>
 </html>

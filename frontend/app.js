@@ -302,6 +302,20 @@ function show(which) {
   for (const id of ['empty-state', 'loading', 'error', 'report']) $(id).hidden = id !== which;
 }
 
+/* On desktop the report sits beside the sidebar, so the top of the page is
+   already the right place to be. In the stacked single-column layout it is
+   not: scrolling to the top would show the sidebar again and leave the user
+   hunting for the result they just asked for. */
+function scrollToResult() {
+  const behavior = prefs.motion ? 'smooth' : 'auto';
+  const stacked = window.matchMedia('(max-width: 1100px)').matches;
+  if (!stacked) return window.scrollTo({ top: 0, behavior });
+
+  const top = $('results').getBoundingClientRect().top + scrollY
+    - (document.querySelector('.topbar')?.offsetHeight || 64) - 8;
+  window.scrollTo({ top: Math.max(0, top), behavior });
+}
+
 function toast(message) {
   const t = $('toast');
   t.textContent = message;
@@ -390,9 +404,7 @@ async function run(url, options, label) {
     lastResult = data;
     render(data);
     show('report');
-    // Scroll the window, not the report: scrollIntoView would tuck the
-    // verdict panel underneath the sticky header.
-    window.scrollTo({ top: 0, behavior: prefs.motion ? 'smooth' : 'auto' });
+    scrollToResult();
     requestAnimationFrame(() => { observeReveals(); wire.build(); });
   } catch (err) {
     $('error-text').textContent = err.message
@@ -414,6 +426,113 @@ function render(d) {
   renderRelay(d.received_chain, d.origin);
   renderWarnings(d.warnings);
   renderEvidence(d);
+  renderGeo(d);
+}
+
+/* ══ origin intelligence ═══════════════════════════════════════════════
+   Geolocation runs in the browser rather than the backend: it keeps the
+   serverless function fast, needs no API key, and a failure degrades to a
+   message instead of holding up the verdict. */
+
+const GEO_CACHE = new Map();
+
+async function geolocate(ip) {
+  if (!ip) return null;
+  if (GEO_CACHE.has(ip)) return GEO_CACHE.get(ip);
+  let result = null;
+  try {
+    const res = await fetch(`https://ipwho.is/${encodeURIComponent(ip)}`,
+      { signal: AbortSignal.timeout?.(6000) });
+    const data = await res.json();
+    if (data && data.success) result = data;
+  } catch { /* offline, blocked, rate-limited: handled by the caller */ }
+  GEO_CACHE.set(ip, result);
+  return result;
+}
+
+/* A styled country-code badge rather than a flag emoji: Windows ships no
+   regional-indicator glyphs, so flags there degrade to bare letters. This
+   renders identically everywhere and needs no image assets. */
+const flagFor = (cc) => (cc && cc.length === 2) ? cc.toUpperCase() : '??';
+
+/** Minutes of UTC offset in an ISO timestamp, or null if it carries none. */
+function offsetMinutes(iso) {
+  const m = /([+-])(\d{2}):?(\d{2})$/.exec(String(iso || '').trim());
+  if (!m) return /Z$/.test(String(iso || '')) ? 0 : null;
+  return (m[1] === '-' ? -1 : 1) * (Number(m[2]) * 60 + Number(m[3]));
+}
+
+const fmtOffset = (mins) => {
+  const sign = mins < 0 ? '-' : '+';
+  const a = Math.abs(mins);
+  return `${sign}${String(Math.floor(a / 60)).padStart(2, '0')}:${String(a % 60).padStart(2, '0')}`;
+};
+
+async function renderGeo(d) {
+  const box = $('geo');
+  const ip = d.origin.client_ip;
+  $('geo-source').textContent = '';
+
+  if (!ip) {
+    box.innerHTML = '<div class="geo-empty">No origin IP could be recovered from the '
+      + 'headers, so the sender cannot be located.</div>';
+    return;
+  }
+
+  box.innerHTML = `<div class="geo-loading">Locating ${esc(ip)}…</div>`;
+  const geo = await geolocate(ip);
+
+  if (!geo) {
+    box.innerHTML = '<div class="geo-empty">Geolocation lookup unavailable — the '
+      + 'IP is still reported above and every other check is unaffected.</div>';
+    return;
+  }
+
+  $('geo-source').textContent = '(ipwho.is)';
+  const conn = geo.connection || {};
+  const tz = geo.timezone || {};
+
+  const tiles = [
+    ['ISP', conn.isp || conn.org || '—'],
+    ['Autonomous system', conn.asn ? `AS${conn.asn}` : '—'],
+    ['Coordinates', (geo.latitude != null && geo.longitude != null)
+      ? `${geo.latitude.toFixed(3)}, ${geo.longitude.toFixed(3)}` : '—'],
+    ['Server timezone', tz.id ? `${tz.id} (${tz.utc || '?'})` : '—'],
+  ];
+
+  box.innerHTML = `
+    <div class="geo-main">
+      <div class="geo-flag">${flagFor(geo.country_code)}</div>
+      <div class="geo-place">
+        <div class="geo-country">${esc(geo.country || 'Unknown')}</div>
+        <div class="geo-city">${esc([geo.city, geo.region].filter(Boolean).join(', ') || '—')}
+          &nbsp;·&nbsp; ${esc(ip)}</div>
+      </div>
+    </div>
+    <dl class="geo-grid">
+      ${tiles.map(([k, v]) => `<div class="geo-tile"><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join('')}
+    </dl>
+    ${timezoneVerdict(d, tz)}`;
+}
+
+/** Compare the timezone the message claims against where it was really sent. */
+function timezoneVerdict(d, tz) {
+  const claimed = offsetMinutes(d.message.date);
+  const actual = offsetMinutes(`2000-01-01T00:00:00${tz.utc || ''}`);
+  if (claimed === null || actual === null) return '';
+
+  const drift = Math.abs(claimed - actual);
+  if (drift <= 60) {
+    return `<div class="geo-alert ok"><span>✓</span><span>The message's stated timezone
+      (<b>${fmtOffset(claimed)}</b>) matches the sending server's location
+      (<b>${fmtOffset(actual)}</b>).</span></div>`;
+  }
+  return `<div class="geo-alert"><span>⚠</span><span>The <code>Date</code> header claims
+    <b>${fmtOffset(claimed)}</b>, but the sending server sits at
+    <b>${fmtOffset(actual)}</b> — a ${(drift / 60).toFixed(1).replace(/\.0$/, '')}&nbsp;hour
+    discrepancy.
+    Mail composed in one region and relayed through infrastructure in another is
+    common in outsourced phishing operations.</span></div>`;
 }
 
 function renderVerdict(d) {
