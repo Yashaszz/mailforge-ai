@@ -853,3 +853,13 @@ body.motion-off .hop-halo.ping { animation: none; }
 }
 .route-legend .rl-place { color: var(--text); font-weight: 600; }
 .route-legend .rl-meta { font-family: var(--mono); font-size: 11.5px; color: var(--text-faint); }
+
+.geo-role {
+  margin-top: 3px; font-size: 10.5px; text-transform: uppercase;
+  letter-spacing: .07em; color: var(--text-faint);
+}
+.geo-alert.info {
+  background: color-mix(in srgb, var(--info) 8%, transparent);
+  border-color: color-mix(in srgb, var(--info) 28%, transparent);
+  color: var(--info);
+}

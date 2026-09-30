@@ -578,6 +578,32 @@ async function geolocate(ip) {
    renders identically everywhere and needs no image assets. */
 const flagFor = (cc) => (cc && cc.length === 2) ? cc.toUpperCase() : '??';
 
+/* Mail sent through a webmail or relay provider leaves that provider's
+   datacentre, not the sender's machine. Geolocating it tells you where
+   Google is, not where the person is -- and comparing the Date header
+   against the datacentre's timezone produces a mismatch on every perfectly
+   ordinary message. Both have to be reported differently. */
+const PROVIDER_RELAYS = [
+  [/\bgoogle\b/i, 'Google (Gmail)'],
+  [/\bmicrosoft\b|\boutlook\b|\bhotmail\b/i, 'Microsoft (Outlook)'],
+  [/\bamazon\b|\baws\b/i, 'Amazon SES'],
+  [/\byahoo\b/i, 'Yahoo'],
+  [/\bproton\b/i, 'Proton Mail'],
+  [/\bzoho\b/i, 'Zoho'],
+  [/\bapple\b|\bicloud\b/i, 'Apple iCloud'],
+  [/sendgrid|mailgun|mailchimp|sparkpost|postmark/i, 'a bulk email platform'],
+  [/mimecast|proofpoint|barracuda|\bcisco\b/i, 'a mail security gateway'],
+];
+
+function detectProvider(geo) {
+  const conn = geo?.connection || {};
+  const haystack = `${conn.isp || ''} ${conn.org || ''}`;
+  for (const [pattern, name] of PROVIDER_RELAYS) {
+    if (pattern.test(haystack)) return name;
+  }
+  return null;
+}
+
 /** Minutes of UTC offset in an ISO timestamp, or null if it carries none. */
 function offsetMinutes(iso) {
   const m = /([+-])(\d{2}):?(\d{2})$/.exec(String(iso || '').trim());
@@ -623,6 +649,8 @@ async function renderGeo(d) {
     ['Server timezone', tz.id ? `${tz.id} (${tz.utc || '?'})` : '—'],
   ];
 
+  const provider = detectProvider(geo);
+
   box.innerHTML = `
     <div class="geo-main">
       <div class="geo-flag">${flagFor(geo.country_code)}</div>
@@ -630,12 +658,22 @@ async function renderGeo(d) {
         <div class="geo-country">${esc(geo.country || 'Unknown')}</div>
         <div class="geo-city">${esc([geo.city, geo.region].filter(Boolean).join(', ') || '—')}
           &nbsp;·&nbsp; ${esc(ip)}</div>
+        <div class="geo-role">Location of the sending mail server</div>
       </div>
     </div>
     <dl class="geo-grid">
       ${tiles.map(([k, v]) => `<div class="geo-tile"><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join('')}
     </dl>
-    ${timezoneVerdict(d, tz)}`;
+    ${provider ? providerNote(provider, geo) : timezoneVerdict(d, tz)}`;
+}
+
+/** Explain why a provider datacentre is not the sender's location. */
+function providerNote(provider, geo) {
+  return `<div class="geo-alert info"><span>ⓘ</span><span>This message was relayed by
+    <b>${esc(provider)}</b>, so ${esc(geo.city || 'this location')} is that provider's
+    datacentre — <b>not the sender's own location</b>, which webmail does not expose in
+    the headers. Timezone comparison is skipped here because a mismatch is expected for
+    provider-relayed mail and would mean nothing.</span></div>`;
 }
 
 /** Compare the timezone the message claims against where it was really sent. */
