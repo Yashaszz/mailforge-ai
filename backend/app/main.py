@@ -60,6 +60,11 @@ SAMPLE_LIBRARY: dict[str, tuple[str, str]] = {
         "Wire-transfer request from a lookalike domain that publishes no "
         "SPF or DMARC at all, with replies redirected elsewhere.",
     ),
+    "05_vpn_anonymised_phish.eml": (
+        "Anonymised sender (VPN)",
+        "Credential phishing sent straight from a commercial VPN exit, so the "
+        "sender's real network is hidden. Shows VPN detection on the origin.",
+    ),
     "04_multihop_relay_laundering.eml": (
         "Multi-hop relay laundering",
         "Invoice fraud routed through four countries to obscure its origin. "

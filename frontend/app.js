@@ -26,6 +26,7 @@ const SAMPLE_ACCENT = {
   '02_spoofed_paypal_phish.eml': 'var(--malicious)',
   '03_bec_ceo_wire_fraud.eml': 'var(--highrisk)',
   '04_multihop_relay_laundering.eml': 'var(--malicious)',
+  '05_vpn_anonymised_phish.eml': 'var(--highrisk)',
 };
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g,

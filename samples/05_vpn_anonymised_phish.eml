@@ -1,0 +1,28 @@
+Return-Path: <alerts@m365-security-notice.example>
+Received: from mx01.recipient-corp.in (localhost [127.0.0.1])
+	by mx01.recipient-corp.in (Postfix) with ESMTP id D4A7B2C9E106
+	for <priya.nair@recipient-corp.in>; Tue, 30 Sep 2026 01:34:22 +0530 (IST)
+Received: from mail.m365-security-notice.example (unknown [146.70.120.34])
+	by mx01.recipient-corp.in (Postfix) with ESMTPSA id 3C8E1F6B4A27
+	for <priya.nair@recipient-corp.in>; Tue, 30 Sep 2026 01:34:18 +0530 (IST)
+MIME-Version: 1.0
+From: "Microsoft 365 Security" <alerts@m365-security-notice.example>
+Reply-To: account-recovery@m365-verify-portal.example
+To: priya.nair@recipient-corp.in
+Subject: Action required: your password expires in 24 hours
+Message-ID: <3C8E1F6B4A27.m365@m365-security-notice.example>
+Date: Tue, 30 Sep 2026 01:34:10 +0530
+X-Mailer: PHPMailer 6.9.1
+Content-Type: text/html; charset="utf-8"
+
+<html><body>
+<p>Dear Priya,</p>
+<p>Your Microsoft 365 password for <b>recipient-corp.in</b> is scheduled to
+expire within <b>24 hours</b>. To avoid losing access to your mailbox and
+files, you must verify your credentials immediately.</p>
+<p><a href="http://m365-verify-portal.example/auth/session?u=priya.nair">
+Keep my current password</a></p>
+<p>If you do not confirm, your account will be suspended and IT support will
+be unable to restore it.</p>
+<p>Microsoft 365 Security Team</p>
+</body></html>
