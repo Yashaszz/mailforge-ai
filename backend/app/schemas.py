@@ -12,12 +12,26 @@ from pydantic import BaseModel, Field
 
 from .services.email_auth import AuthReport, AuthVerdict
 from .services.eml_parser import ParsedEmail, is_public_ip
+from .services.network_intel import NetworkIntel
 from .services.risk import RiskAssessment
 
 
 class HeaderEntry(BaseModel):
     name: str
     value: str
+
+
+class NetworkOut(BaseModel):
+    """What kind of network an address belongs to (VPN / Tor / datacentre)."""
+
+    ip: str
+    checked: bool = False
+    is_anonymising: bool = False
+    kind: str | None = None
+    risk: int | None = None
+    provider: str | None = None
+    label: str = "not assessed"
+    detail: str = ""
 
 
 class ReceivedHopOut(BaseModel):
@@ -32,6 +46,7 @@ class ReceivedHopOut(BaseModel):
     queue_id: str | None = None
     recipient: str | None = None
     timestamp: datetime | None = None
+    network: NetworkOut | None = None
     raw: str
 
 
@@ -63,6 +78,7 @@ class OriginOut(BaseModel):
     client_ip_is_public: bool = False
     client_ip_source: str | None = None
     helo: str | None = None
+    network: NetworkOut | None = None
 
 
 class SpfOut(BaseModel):
@@ -170,6 +186,16 @@ class HealthResponse(BaseModel):
     offline_mode: bool
 
 
+def _network_out(intel: NetworkIntel | None) -> NetworkOut | None:
+    if intel is None:
+        return None
+    return NetworkOut(
+        ip=intel.ip, checked=intel.checked, is_anonymising=intel.is_anonymising,
+        kind=intel.kind, risk=intel.risk, provider=intel.provider,
+        label=intel.label, detail=intel.detail,
+    )
+
+
 def build_response(
     parsed: ParsedEmail,
     report: AuthReport,
@@ -177,6 +203,7 @@ def build_response(
     *,
     filename: str | None,
     analyzed_at: datetime,
+    networks: dict[str, NetworkIntel] | None = None,
 ) -> AnalysisResponse:
     """Assemble the API response from the parser, auth and scoring results."""
     return AnalysisResponse(
@@ -219,6 +246,7 @@ def build_response(
             client_ip_is_public=is_public_ip(parsed.client_ip),
             client_ip_source=parsed.client_ip_source,
             helo=parsed.helo,
+            network=_network_out((networks or {}).get(parsed.client_ip or "")),
         ),
         authentication=AuthenticationOut(
             spf=SpfOut(
@@ -274,6 +302,7 @@ def build_response(
                 queue_id=hop.queue_id,
                 recipient=hop.recipient,
                 timestamp=hop.timestamp,
+                network=_network_out((networks or {}).get(hop.from_ip or "")),
                 raw=hop.raw,
             )
             for hop in parsed.received_chain

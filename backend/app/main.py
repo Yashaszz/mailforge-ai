@@ -28,6 +28,7 @@ from .config import VERSION, get_settings
 from .schemas import AnalysisResponse, HealthResponse, SampleOut, build_response
 from .services.email_auth import authenticate, configure_dns
 from .services.eml_parser import parse_eml
+from .services.network_intel import lookup_many
 from .services.risk import assess
 
 logging.basicConfig(
@@ -169,7 +170,14 @@ async def _run_analysis(raw: bytes, *, filename: str | None) -> AnalysisResponse
         timeout=settings.dns_timeout,
         spf_querytime=settings.spf_querytime,
     )
-    assessment = assess(parsed, report)
+    # Reputation for every publicly routable hop, origin first so it is the
+    # one that survives the lookup cap. Never blocks the verdict.
+    hop_ips = [parsed.client_ip] + [
+        h.from_ip for h in parsed.received_chain if h.is_public_ip
+    ]
+    networks = await run_in_threadpool(lookup_many, [ip for ip in hop_ips if ip])
+
+    assessment = assess(parsed, report, networks)
 
     logger.info(
         "analyzed %s from=%s ip=%s spf=%s dkim=%s dmarc=%s -> %s (%d)",
@@ -179,7 +187,8 @@ async def _run_analysis(raw: bytes, *, filename: str | None) -> AnalysisResponse
     )
 
     return build_response(
-        parsed, report, assessment, filename=filename, analyzed_at=started
+        parsed, report, assessment, filename=filename, analyzed_at=started,
+        networks=networks,
     )
 
 

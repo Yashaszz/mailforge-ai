@@ -463,8 +463,12 @@ async function renderMap(d) {
 
   // Oldest hop first: the order the message actually travelled.
   const ips = [];
+  const netByIp = {};
   for (const hop of [...d.received_chain].reverse()) {
-    if (hop.from_ip_is_public && !ips.includes(hop.from_ip)) ips.push(hop.from_ip);
+    if (hop.from_ip_is_public && !ips.includes(hop.from_ip)) {
+      ips.push(hop.from_ip);
+      if (hop.network) netByIp[hop.from_ip] = hop.network;
+    }
   }
   if (!ips.length) {
     status.textContent = 'No publicly routable hop in the relay chain, so the '
@@ -543,9 +547,11 @@ async function renderMap(d) {
       : i === points.length - 1 ? 'var(--pass)' : 'var(--medium)';
     const role = i === 0 ? 'origin' : (i === points.length - 1 ? 'last relay before delivery' : 'transit');
     const conn = p.geo.connection || {};
+    const net = netByIp[p.ip];
     return `<li style="--c:${colour}">
       <span>
         <span class="rl-place">${esc([p.geo.city, p.geo.country].filter(Boolean).join(', '))}</span>
+        ${netBadge(net)}
         <span class="rl-meta"> · ${esc(p.ip)}${conn.isp ? ' · ' + esc(conn.isp) : ''}</span>
         <span class="rl-meta"> — ${role}</span>
       </span></li>`;
@@ -632,8 +638,11 @@ async function renderGeo(d) {
   const geo = await geolocate(ip);
 
   if (!geo) {
+    // Network reputation comes from our own backend, so it survives a failed
+    // geolocation lookup and must still be shown.
     box.innerHTML = '<div class="geo-empty">Geolocation lookup unavailable — the '
-      + 'IP is still reported above and every other check is unaffected.</div>';
+      + `IP (${esc(ip)}) is still reported above and every other check is `
+      + `unaffected.</div>${netAlert(d.origin.network)}`;
     return;
   }
 
@@ -650,21 +659,40 @@ async function renderGeo(d) {
   ];
 
   const provider = detectProvider(geo);
+  const net = d.origin.network;
 
   box.innerHTML = `
     <div class="geo-main">
       <div class="geo-flag">${flagFor(geo.country_code)}</div>
       <div class="geo-place">
-        <div class="geo-country">${esc(geo.country || 'Unknown')}</div>
+        <div class="geo-country">${esc(geo.country || 'Unknown')}${netBadge(net)}</div>
         <div class="geo-city">${esc([geo.city, geo.region].filter(Boolean).join(', ') || '—')}
           &nbsp;·&nbsp; ${esc(ip)}</div>
         <div class="geo-role">Location of the sending mail server</div>
       </div>
     </div>
+    ${netAlert(net)}
     <dl class="geo-grid">
       ${tiles.map(([k, v]) => `<div class="geo-tile"><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join('')}
     </dl>
     ${provider ? providerNote(provider, geo) : timezoneVerdict(d, tz)}`;
+}
+
+/** VPN / Tor / clean badge beside the country name. */
+function netBadge(net) {
+  if (!net || !net.checked) return '';
+  const kind = (net.kind || '').toUpperCase();
+  if (!net.is_anonymising) return '<span class="net-badge clean">no proxy</span>';
+  return `<span class="net-badge ${kind === 'TOR' ? 'tor' : 'vpn'}">${esc(kind || 'PROXY')}</span>`;
+}
+
+/** Called out separately, because an anonymised sender is the finding. */
+function netAlert(net) {
+  if (!net || !net.checked || !net.is_anonymising) return '';
+  const tor = (net.kind || '').toUpperCase() === 'TOR';
+  return `<div class="geo-alert${tor ? '' : ' warn'}"><span>${tor ? '⛔' : '⚠'}</span><span>
+    ${esc(net.detail)}${net.risk != null
+      ? ` <b>Reputation risk score: ${net.risk}/100.</b>` : ''}</span></div>`;
 }
 
 /** Explain why a provider datacentre is not the sender's location. */

@@ -19,6 +19,7 @@ import re
 from dataclasses import dataclass, field
 
 from .email_auth import AuthReport
+from .network_intel import NetworkIntel
 from .eml_parser import ParsedEmail, is_public_ip
 
 __all__ = ["RiskAssessment", "RiskReason", "assess"]
@@ -90,7 +91,11 @@ class RiskAssessment:
     reasons: list[RiskReason] = field(default_factory=list)
 
 
-def assess(parsed: ParsedEmail, report: AuthReport) -> RiskAssessment:
+def assess(
+    parsed: ParsedEmail,
+    report: AuthReport,
+    networks: dict[str, NetworkIntel] | None = None,
+) -> RiskAssessment:
     """Score a message from its Layer 1 signals."""
     reasons: list[RiskReason] = []
 
@@ -100,6 +105,7 @@ def assess(parsed: ParsedEmail, report: AuthReport) -> RiskAssessment:
     _score_identity(parsed, reasons)
     _score_infrastructure(parsed, report, reasons)
     _score_content(parsed, reasons)
+    _score_network(parsed, networks or {}, reasons)
 
     reasons.sort(key=lambda r: (SEVERITY_ORDER.get(r.severity, 9), -r.points))
 
@@ -403,3 +409,50 @@ def _body_text(parsed: ParsedEmail, limit: int = 20000) -> str:
             return parsed.raw.decode("utf-8", "replace")[:limit]
         except Exception:
             return ""
+
+
+# --------------------------------------------------------------------------
+# network reputation of the sending infrastructure
+# --------------------------------------------------------------------------
+
+def _score_network(
+    parsed: ParsedEmail, networks: dict[str, NetworkIntel], reasons: list[RiskReason]
+) -> None:
+    """Score what kind of network the mail was actually sent from.
+
+    Using a VPN is ordinary and not suspicious in itself. A *mail server*
+    behind one is not ordinary: legitimate senders publish a stable, traceable
+    sending address so that receivers can authenticate them. Anonymising the
+    origin defeats the entire point.
+    """
+    origin = networks.get(parsed.client_ip or "")
+    if origin and origin.checked and origin.is_anonymising:
+        kind = (origin.kind or "proxy").upper()
+        points, severity = (28, "high") if kind == "TOR" else (18, "medium")
+        reasons.append(RiskReason(
+            code=f"origin_{kind.lower()}",
+            severity=severity,
+            points=points,
+            title=f"Message was sent from {'a Tor exit node' if kind == 'TOR' else 'a VPN or proxy'}",
+            detail=origin.detail,
+        ))
+
+    # Transit through anonymising infrastructure, excluding the origin itself
+    # so a single hop is not counted twice.
+    transit = [
+        n for ip, n in networks.items()
+        if ip != parsed.client_ip and n.checked and n.is_anonymising
+    ]
+    if transit:
+        kinds = ", ".join(sorted({(n.kind or "proxy").upper() for n in transit}))
+        reasons.append(RiskReason(
+            code="relay_anonymised",
+            severity="medium",
+            points=min(8 * len(transit), 20),
+            title=f"Relay path passes through anonymising infrastructure ({kinds})",
+            detail=(
+                f"{len(transit)} intermediate hop(s) are VPN, proxy or Tor nodes. "
+                f"Chaining relays through anonymising networks is done to break the "
+                f"trail between the sender and the recipient."
+            ),
+        ))
