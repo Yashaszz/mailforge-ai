@@ -1,0 +1,42 @@
+Return-Path: <billing@accounts-payable-verify.example>
+Received: from mx01.recipient-corp.in (localhost [127.0.0.1])
+	by mx01.recipient-corp.in (Postfix) with ESMTP id 8F2C1D7A3E90
+	for <accounts@recipient-corp.in>; Thu, 11 Sep 2026 02:47:55 +0530 (IST)
+Received: from relay-04.dc-atlanta.example (relay-04.dc-atlanta.example [45.134.140.20])
+	by mx01.recipient-corp.in (Postfix) with ESMTPS id 6B0E9A4F2C71
+	for <accounts@recipient-corp.in>; Thu, 11 Sep 2026 02:47:51 +0530 (IST)
+Received: from exit-de.anon-transit.example (exit-de.anon-transit.example [185.220.101.50])
+	by relay-04.dc-atlanta.example (Postfix) with ESMTP id 4D8B3F1E0A62
+	for <accounts@recipient-corp.in>; Wed, 10 Sep 2026 21:47:44 +0000 (UTC)
+Received: from smtp-out.bulk-sofia.example (smtp-out.bulk-sofia.example [5.188.206.130])
+	by exit-de.anon-transit.example (Postfix) with ESMTP id 2A7C6E9D5B13
+	for <accounts@recipient-corp.in>; Wed, 10 Sep 2026 21:47:31 +0000 (UTC)
+Received: from host-197-210-64-10.dynamic.example (host-197-210-64-10.dynamic.example [197.210.64.10])
+	by smtp-out.bulk-sofia.example (Postfix) with SMTP id 1E5A2B8C4D07
+	for <accounts@recipient-corp.in>; Wed, 10 Sep 2026 21:47:12 +0000 (UTC)
+MIME-Version: 1.0
+From: "Accounts Payable - Northbridge Supplies" <billing@accounts-payable-verify.example>
+Reply-To: remittance.desk@secure-invoice-portal.example
+To: accounts@recipient-corp.in
+Subject: Updated remittance details - invoice INV-2026-4471 overdue
+Message-ID: <1E5A2B8C4D07.4471@bulk-sofia.example>
+Date: Wed, 10 Sep 2026 21:47:05 +0000
+X-Mailer: PHPMailer 6.9.1
+Content-Type: text/plain; charset="utf-8"
+
+Dear Accounts Team,
+
+Our records show invoice INV-2026-4471 remains unpaid and is now overdue.
+
+Please note that our banking details changed following a treasury review
+last month. Kindly disregard the account on the original invoice and remit
+payment to the updated beneficiary account below before close of business.
+
+This is confidential and should be handled directly by your team only.
+
+Reply to this message and we will send the updated beneficiary details
+immediately.
+
+Regards,
+Accounts Payable
+Northbridge Supplies Ltd

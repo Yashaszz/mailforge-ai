@@ -59,6 +59,11 @@ SAMPLE_LIBRARY: dict[str, tuple[str, str]] = {
         "Wire-transfer request from a lookalike domain that publishes no "
         "SPF or DMARC at all, with replies redirected elsewhere.",
     ),
+    "04_multihop_relay_laundering.eml": (
+        "Multi-hop relay laundering",
+        "Invoice fraud routed through four countries to obscure its origin. "
+        "Shows the full relay path reconstructed and plotted.",
+    ),
 }
 
 app = FastAPI(

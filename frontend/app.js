@@ -25,6 +25,7 @@ const SAMPLE_ACCENT = {
   '01_legitimate_gmail.eml': 'var(--allow)',
   '02_spoofed_paypal_phish.eml': 'var(--malicious)',
   '03_bec_ceo_wire_fraud.eml': 'var(--highrisk)',
+  '04_multihop_relay_laundering.eml': 'var(--malicious)',
 };
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g,
@@ -427,6 +428,128 @@ function render(d) {
   renderWarnings(d.warnings);
   renderEvidence(d);
   renderGeo(d);
+  renderMap(d);
+}
+
+/* ══ geographic route ══════════════════════════════════════════════════
+   Plots every locatable relay hop on an equirectangular world map, oldest
+   first, so the path reads in the direction the mail actually travelled. */
+
+let worldPath = null;
+
+async function loadWorld() {
+  if (worldPath !== null) return worldPath;
+  try {
+    const res = await fetch('world.json');
+    worldPath = (await res.json()).d;
+  } catch {
+    worldPath = '';
+  }
+  return worldPath;
+}
+
+/* Equirectangular: the map is authored in a 360x180 viewBox, 1 unit = 1 degree. */
+const project = (lat, lon) => ({ x: lon + 180, y: 90 - lat });
+
+async function renderMap(d) {
+  const status = $('map-status');
+  const svg = $('worldmap');
+  const legend = $('route-legend');
+  svg.innerHTML = '';
+  legend.innerHTML = '';
+  $('map-caption').textContent = '';
+  status.hidden = false;
+  status.textContent = 'Plotting relay path…';
+
+  // Oldest hop first: the order the message actually travelled.
+  const ips = [];
+  for (const hop of [...d.received_chain].reverse()) {
+    if (hop.from_ip_is_public && !ips.includes(hop.from_ip)) ips.push(hop.from_ip);
+  }
+  if (!ips.length) {
+    status.textContent = 'No publicly routable hop in the relay chain, so the '
+      + 'route cannot be plotted.';
+    return;
+  }
+
+  const [land, ...located] = await Promise.all([loadWorld(), ...ips.map(geolocate)]);
+  const points = [];
+  located.forEach((geo, i) => {
+    if (geo && geo.latitude != null && geo.longitude != null) {
+      points.push({ ip: ips[i], geo, ...project(geo.latitude, geo.longitude) });
+    }
+  });
+
+  if (!points.length) {
+    status.textContent = 'Geolocation unavailable, so the route could not be plotted. '
+      + 'The relay chain itself is listed above.';
+    return;
+  }
+  status.hidden = true;
+
+  const countries = [...new Set(points.map((p) => p.geo.country).filter(Boolean))];
+  $('map-caption').textContent = `(${points.length} located ${
+    points.length === 1 ? 'hop' : 'hops'}, ${countries.length} ${
+    countries.length === 1 ? 'country' : 'countries'})`;
+
+  const svgns = 'http://www.w3.org/2000/svg';
+  const parts = [];
+
+  if (land) parts.push(`<path class="land" d="${land}"/>`);
+
+  // Graticule every 30 degrees, for a sense of scale.
+  let grat = '';
+  for (let lon = 0; lon <= 360; lon += 30) grat += `M${lon} 0V180`;
+  for (let lat = 0; lat <= 180; lat += 30) grat += `M0 ${lat}H360`;
+  parts.push(`<path class="graticule" d="${grat}"/>`);
+
+  // Arcs between consecutive hops, bowed perpendicular to the leg so the
+  // path reads as a route rather than a straight line through the map.
+  points.slice(0, -1).forEach((a, i) => {
+    const b = points[i + 1];
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const dist = Math.hypot(dx, dy) || 1;
+    const bow = Math.min(dist * 0.28, 26);
+    const cx = (a.x + b.x) / 2 - (dy / dist) * bow;
+    const cy = (a.y + b.y) / 2 + (dx / dist) * bow;
+    const len = dist + bow;
+    parts.push(`<path class="route-arc animate" style="--len:${len.toFixed(1)};`
+      + `--delay:${(i * 0.32).toFixed(2)}s" d="M${a.x.toFixed(1)} ${a.y.toFixed(1)} `
+      + `Q${cx.toFixed(1)} ${cy.toFixed(1)} ${b.x.toFixed(1)} ${b.y.toFixed(1)}"/>`);
+  });
+
+  points.forEach((p, i) => {
+    const role = i === 0 ? 'start' : (i === points.length - 1 ? 'end' : 'mid');
+    const colour = role === 'start' ? 'var(--critical)'
+      : role === 'end' ? 'var(--pass)' : 'var(--medium)';
+    if (role === 'start') {
+      parts.push(`<circle class="hop-halo ping" style="color:${colour}" `
+        + `cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="1.6"/>`);
+    }
+    parts.push(`<circle class="hop-marker ${role}" cx="${p.x.toFixed(1)}" `
+      + `cy="${p.y.toFixed(1)}" r="1.9"/>`);
+    const label = p.geo.city || p.geo.country || '';
+    if (label) {
+      const flip = p.x > 300;                    // keep labels inside the frame
+      parts.push(`<text class="map-label" x="${(p.x + (flip ? -3 : 3)).toFixed(1)}" `
+        + `y="${(p.y + 1.2).toFixed(1)}"${flip ? ' text-anchor="end"' : ''}>${esc(label)}</text>`);
+    }
+  });
+
+  svg.innerHTML = parts.join('');
+
+  legend.innerHTML = points.map((p, i) => {
+    const colour = i === 0 ? 'var(--critical)'
+      : i === points.length - 1 ? 'var(--pass)' : 'var(--medium)';
+    const role = i === 0 ? 'origin' : (i === points.length - 1 ? 'last relay before delivery' : 'transit');
+    const conn = p.geo.connection || {};
+    return `<li style="--c:${colour}">
+      <span>
+        <span class="rl-place">${esc([p.geo.city, p.geo.country].filter(Boolean).join(', '))}</span>
+        <span class="rl-meta"> · ${esc(p.ip)}${conn.isp ? ' · ' + esc(conn.isp) : ''}</span>
+        <span class="rl-meta"> — ${role}</span>
+      </span></li>`;
+  }).join('');
 }
 
 /* ══ origin intelligence ═══════════════════════════════════════════════
@@ -752,7 +875,7 @@ $('reset-settings').onclick = () => { prefs = { ...DEFAULTS }; savePrefs(); appl
 addEventListener('keydown', (e) => {
   if (e.target.matches('input, textarea')) return;
   if (e.key === 'Escape') return openSettings(false);
-  if (['1', '2', '3'].includes(e.key)) selectSample(Number(e.key) - 1);
+  if (/^[1-9]$/.test(e.key)) selectSample(Number(e.key) - 1);
 });
 
 boot();

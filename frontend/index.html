@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=2">
+<link rel="stylesheet" href="styles.css?v=4">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>">
 </head>
 <body>
@@ -111,7 +111,7 @@
       <div id="samples" class="samples">
         <div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>
       </div>
-      <p class="kbd-hint">Press <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> to switch scenarios</p>
+      <p class="kbd-hint">Press <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> <kbd>4</kbd> to switch scenarios</p>
     </section>
 
     <section class="panel pad">
@@ -232,6 +232,17 @@
         </h2>
         <div class="panel geo" id="geo" data-reveal></div>
 
+        <h2 class="block-title" data-wire-node="Route" data-reveal>
+          <span>Geographic route</span>
+          <em class="muted-tag" id="map-caption"></em>
+        </h2>
+        <div class="panel mapwrap" id="mapwrap" data-reveal>
+          <div class="map-status" id="map-status">Plotting relay path…</div>
+          <svg class="worldmap" id="worldmap" viewBox="0 12 360 136"
+               preserveAspectRatio="xMidYMid meet" aria-label="Relay path on a world map"></svg>
+          <ol class="route-legend" id="route-legend"></ol>
+        </div>
+
         <div id="warnings-wrap" hidden>
           <h2 class="block-title" data-reveal><span>Analysis caveats</span></h2>
           <div class="panel warnings" id="warnings" data-reveal></div>
@@ -266,6 +277,6 @@
 
 <div class="toast" id="toast" hidden></div>
 
-<script src="app.js?v=2"></script>
+<script src="app.js?v=4"></script>
 </body>
 </html>
