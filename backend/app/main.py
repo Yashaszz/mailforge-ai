@@ -27,6 +27,7 @@ from starlette.concurrency import run_in_threadpool
 from .config import VERSION, get_settings
 from .schemas import AnalysisResponse, HealthResponse, SampleOut, build_response
 from .services.email_auth import authenticate, configure_dns
+from .services.cross_check import cross_check
 from .services.eml_parser import parse_eml
 from .services.network_intel import lookup_many
 from .services.risk import assess
@@ -184,6 +185,7 @@ async def _run_analysis(raw: bytes, *, filename: str | None) -> AnalysisResponse
     networks = await run_in_threadpool(lookup_many, [ip for ip in hop_ips if ip])
 
     assessment = assess(parsed, report, networks)
+    corroboration = cross_check(parsed, report)
 
     logger.info(
         "analyzed %s from=%s ip=%s spf=%s dkim=%s dmarc=%s -> %s (%d)",
@@ -194,7 +196,7 @@ async def _run_analysis(raw: bytes, *, filename: str | None) -> AnalysisResponse
 
     return build_response(
         parsed, report, assessment, filename=filename, analyzed_at=started,
-        networks=networks,
+        networks=networks, corroboration=corroboration,
     )
 
 

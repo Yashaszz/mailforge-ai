@@ -445,6 +445,7 @@ function render(d) {
   for (const el of document.querySelectorAll('#report [data-reveal]')) el.classList.remove('shown');
   renderVerdict(d);
   renderAuth(d.authentication);
+  renderCrossCheck(d.cross_check);
   renderReasons(d.assessment.reasons);
   renderSender(d);
   renderRelay(d.received_chain, d.origin);
@@ -968,3 +969,47 @@ addEventListener('keydown', (e) => {
 });
 
 boot();
+
+/* ══ independent corroboration ═════════════════════════════════════════
+   The receiving mail server ran its own SPF/DKIM/DMARC checks at delivery
+   and recorded them in an Authentication-Results header. Comparing against
+   that is a second opinion from a different implementation on the same
+   message — the most direct answer to "how do you know this is right?". */
+
+const AGREEMENT_STYLE = {
+  full:          ['var(--pass)', 'Confirmed'],
+  partial:       ['var(--medium)', 'Partial match'],
+  none:          ['var(--high)', 'No match'],
+  not_available: ['var(--low)', 'Unavailable'],
+};
+
+function renderCrossCheck(x) {
+  const box = $('xcheck');
+  if (!x) { box.innerHTML = ''; return; }
+
+  const [colour, label] = AGREEMENT_STYLE[x.agreement] || AGREEMENT_STYLE.not_available;
+  $('xcheck-reporter').textContent = x.reporter ? `(vs ${x.reporter})` : '';
+
+  const rows = x.methods.map((m) => {
+    const state = m.agrees === true ? 'agree' : m.agrees === false ? 'differ' : 'absent';
+    const mark = m.agrees === true ? '✓' : m.agrees === false ? '✕' : '–';
+    return `
+      <div class="xc-row ${state}">
+        <span class="xc-mark">${mark}</span>
+        <span class="xc-method">${esc(m.method.toUpperCase())}</span>
+        <span class="xc-vals">
+          <b>${esc(m.ours)}</b>
+          <span class="xc-vs">vs</span>
+          <b>${esc(m.theirs ?? 'not reported')}</b>
+        </span>
+        <span class="xc-note">${esc(m.note)}</span>
+      </div>`;
+  }).join('');
+
+  box.innerHTML = `
+    <div class="xc-head" style="--c:${colour}">
+      <span class="xc-badge">${esc(label)}</span>
+      <span class="xc-summary">${esc(x.summary)}</span>
+    </div>
+    ${rows}`;
+}

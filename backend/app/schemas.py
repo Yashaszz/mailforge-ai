@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 
 from .services.email_auth import AuthReport, AuthVerdict
 from .services.eml_parser import ParsedEmail, is_public_ip
+from .services.cross_check import CrossCheck
 from .services.network_intel import NetworkIntel
 from .services.risk import RiskAssessment
 
@@ -147,6 +148,24 @@ class AssessmentOut(BaseModel):
     reasons: list[RiskReasonOut] = Field(default_factory=list)
 
 
+class MethodComparisonOut(BaseModel):
+    method: str
+    ours: str
+    theirs: str | None = None
+    agrees: bool | None = None
+    note: str = ""
+
+
+class CrossCheckOut(BaseModel):
+    """Our results compared with the receiving mail server's own verdict."""
+
+    available: bool = False
+    reporter: str | None = None
+    agreement: str = "not_available"
+    summary: str = ""
+    methods: list[MethodComparisonOut] = Field(default_factory=list)
+
+
 class SampleOut(BaseModel):
     name: str
     title: str
@@ -164,6 +183,7 @@ class AnalysisResponse(BaseModel):
     message: MessageSummary
     origin: OriginOut
     authentication: AuthenticationOut
+    cross_check: CrossCheckOut
     headers: dict[str, str] = Field(
         default_factory=dict,
         description="Curated headers an analyst reads first.",
@@ -204,6 +224,7 @@ def build_response(
     filename: str | None,
     analyzed_at: datetime,
     networks: dict[str, NetworkIntel] | None = None,
+    corroboration: CrossCheck | None = None,
 ) -> AnalysisResponse:
     """Assemble the API response from the parser, auth and scoring results."""
     return AnalysisResponse(
@@ -289,6 +310,19 @@ def build_response(
             ),
             dns_available=report.dns_available,
             notes=report.notes,
+        ),
+        cross_check=CrossCheckOut(
+            available=(corroboration.available if corroboration else False),
+            reporter=(corroboration.reporter if corroboration else None),
+            agreement=(corroboration.agreement if corroboration else "not_available"),
+            summary=(corroboration.summary if corroboration else ""),
+            methods=[
+                MethodComparisonOut(
+                    method=m.method, ours=m.ours, theirs=m.theirs,
+                    agrees=m.agrees, note=m.note,
+                )
+                for m in (corroboration.methods if corroboration else [])
+            ],
         ),
         headers=parsed.headers,
         received_chain=[

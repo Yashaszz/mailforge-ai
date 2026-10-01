@@ -119,3 +119,13 @@
   border-radius: 6px; background: #fdf6e3; color: #7a5b00; line-height: 1.45;
 }
 .mf-prov-warn b { color: #5c4400; }
+
+.mf-xcheck {
+  display: flex; align-items: baseline; gap: 8px;
+  margin-top: 11px; padding: 8px 11px; border-radius: 6px;
+  font-size: 12px; line-height: 1.45;
+  color: var(--c); background: color-mix(in srgb, var(--c) 9%, #fff);
+  border: 1px solid color-mix(in srgb, var(--c) 28%, #fff);
+}
+.mf-xcheck b { color: #2c333d; }
+.mf-xmark { font-weight: 700; flex: none; }

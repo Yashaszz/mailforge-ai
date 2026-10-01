@@ -113,6 +113,7 @@ export function renderResult(host, data, { reportBase, raw, retrieval }) {
             </li>`).join('')}
         </ul>` : ''}
 
+      ${corroboration(data.cross_check)}
       ${provenance(retrieval)}
 
       <div class="mf-actions">
@@ -168,4 +169,29 @@ function provenance(retrieval) {
     to be recovered from Gmail's rendered view (${esc(retrieval)}), which can
     alter bytes that DKIM covers. Switch the message source to
     <b>Gmail API</b> in the extension popup for exact bytes.</div>`;
+}
+
+/* One line on whether the receiving mail server reached the same conclusion.
+   In Gmail that server is Google, so agreement is a strong, familiar signal
+   and disagreement is exactly what an analyst needs pushed in front of them. */
+function corroboration(x) {
+  if (!x || !x.available) return '';
+
+  const style = {
+    full:    ['#2f9e63', '✓'],
+    partial: ['#c98a16', '!'],
+    none:    ['#d2691e', '✕'],
+  }[x.agreement];
+  if (!style) return '';
+
+  const [colour, mark] = style;
+  const compared = x.methods.filter((m) => m.agrees !== null);
+  const agreed = compared.filter((m) => m.agrees).length;
+
+  return `<div class="mf-xcheck" style="--c:${colour}">
+    <span class="mf-xmark">${mark}</span>
+    <span>${agreed}/${compared.length} checks match
+      <b>${esc(x.reporter || 'the receiving server')}</b>${
+        x.agreement === 'full' ? ' — independently confirmed' : ''}</span>
+  </div>`;
 }

@@ -879,3 +879,37 @@ body.motion-off .hop-halo.ping { animation: none; }
   color: var(--high);
 }
 .route-legend .net-badge { margin-left: 6px; }
+
+/* ── independent corroboration ───────────────────────────────────────── */
+
+.xcheck { overflow: hidden; }
+
+.xc-head {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 14px 18px; border-bottom: 1px solid var(--border-soft);
+  background: color-mix(in srgb, var(--c) 7%, transparent);
+}
+.xc-badge {
+  flex: none; padding: 3px 10px; border-radius: 99px;
+  font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em;
+  color: var(--c); background: color-mix(in srgb, var(--c) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--c) 34%, transparent);
+}
+.xc-summary { font-size: 13px; color: var(--text-dim); min-width: 0; }
+
+.xc-row {
+  display: grid; grid-template-columns: 20px 58px auto; gap: 4px 11px;
+  align-items: baseline;
+  padding: 11px 18px; border-bottom: 1px solid var(--border-soft);
+}
+.xc-row:last-child { border-bottom: none; }
+.xc-mark { font-weight: 700; }
+.xc-row.agree  .xc-mark { color: var(--pass); }
+.xc-row.differ .xc-mark { color: var(--high); }
+.xc-row.absent .xc-mark { color: var(--text-faint); }
+.xc-method { font-size: 11.5px; font-weight: 700; letter-spacing: .06em; color: var(--text-dim); }
+.xc-vals { font-family: var(--mono); font-size: 12.5px; }
+.xc-vs { color: var(--text-faint); margin: 0 6px; }
+.xc-note {
+  grid-column: 3; font-size: 12px; color: var(--text-faint);
+}
