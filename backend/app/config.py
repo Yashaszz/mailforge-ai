@@ -54,7 +54,13 @@ class Settings(BaseSettings):
         "http://localhost:3000",
         "http://127.0.0.1:5173",
         "http://127.0.0.1:3000",
+        "https://mail.google.com",
     ]
+
+    #: Browser-extension origins are opaque (chrome-extension://<id>) and the
+    #: id changes between an unpacked build and a published one, so they are
+    #: matched by pattern rather than listed.
+    cors_origin_regex: str = r"^chrome-extension://[a-p]{32}$"
 
     @field_validator("dns_servers", "cors_origins", mode="before")
     @classmethod

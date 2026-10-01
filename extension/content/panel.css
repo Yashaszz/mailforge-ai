@@ -1,0 +1,100 @@
+/* Styles injected into Gmail.
+ *
+ * Everything is namespaced .mf-* and every property that Gmail could inherit
+ * into is set explicitly, because Gmail's own stylesheet is aggressive and we
+ * are a guest in its DOM. Light-theme values: Gmail is light for most users
+ * and a dark panel would look pasted on.
+ */
+
+.mf-trigger {
+  display: inline-flex; align-items: center; gap: 6px;
+  margin-left: 8px; padding: 6px 12px;
+  font: 500 13px/1.2 'Google Sans', Roboto, Arial, sans-serif;
+  color: #1a3a6b; background: #e8f0fe; border: 1px solid #c6d9f7;
+  border-radius: 16px; cursor: pointer; vertical-align: middle;
+  transition: background .15s, border-color .15s;
+}
+.mf-trigger:hover { background: #d7e5fd; border-color: #a9c6f2; }
+.mf-trigger svg { width: 14px; height: 14px; }
+
+.mf-panel { margin: 12px 0 4px; font-family: Roboto, Arial, sans-serif; }
+
+.mf-card {
+  border: 1px solid #dfe3e8; border-left: 4px solid var(--level, #6b7a8c);
+  border-radius: 10px; background: #fff; padding: 14px 16px;
+  box-shadow: 0 1px 3px rgba(32, 40, 56, .09);
+  color: #1f2328; font-size: 13px; line-height: 1.5;
+}
+
+.mf-head { display: flex; align-items: flex-start; gap: 14px; }
+
+.mf-score {
+  flex: none; width: 54px; height: 54px; border-radius: 50%;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  border: 3px solid var(--level, #6b7a8c); color: var(--level, #6b7a8c);
+}
+.mf-score span { font-size: 19px; font-weight: 700; line-height: 1; }
+.mf-score small { font-size: 8px; text-transform: uppercase; letter-spacing: .06em; }
+
+.mf-headline { flex: 1; min-width: 0; }
+.mf-level { font-size: 16px; font-weight: 700; margin-bottom: 2px; }
+.mf-summary { color: #4a5261; }
+
+.mf-close {
+  flex: none; border: none; background: none; cursor: pointer;
+  font-size: 20px; line-height: 1; color: #9aa3b0; padding: 0 2px;
+}
+.mf-close:hover { color: #4a5261; }
+
+.mf-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 0; }
+.mf-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 9px; border-radius: 12px;
+  font-size: 11px; color: var(--c); background: color-mix(in srgb, var(--c) 10%, #fff);
+  border: 1px solid color-mix(in srgb, var(--c) 30%, #fff);
+  text-transform: uppercase; letter-spacing: .04em;
+}
+.mf-chip b { font-weight: 700; }
+
+.mf-origin { margin-top: 10px; font-size: 12px; color: #4a5261; }
+.mf-origin b { font-family: 'Roboto Mono', Consolas, monospace; font-weight: 500; }
+
+.mf-reasons { list-style: none; margin: 11px 0 0; padding: 0; }
+.mf-reasons li {
+  display: flex; gap: 9px; align-items: baseline;
+  padding: 4px 0; border-top: 1px solid #f0f2f5;
+}
+.mf-sev {
+  flex: none; width: 54px; font-size: 9.5px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .05em; color: var(--c);
+}
+.mf-reason { color: #2c333d; }
+
+.mf-actions {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; margin-top: 13px; padding-top: 11px; border-top: 1px solid #f0f2f5;
+}
+.mf-brand { font-size: 11px; color: #9aa3b0; letter-spacing: .03em; }
+
+.mf-btn {
+  padding: 7px 14px; border-radius: 6px; cursor: pointer;
+  font: 500 12.5px/1.2 Roboto, Arial, sans-serif;
+  color: #fff; background: #1a73e8; border: 1px solid #1a73e8;
+}
+.mf-btn:hover { background: #1765cc; }
+
+.mf-loading { display: flex; align-items: center; gap: 10px; color: #4a5261; }
+.mf-spin {
+  width: 15px; height: 15px; flex: none; border-radius: 50%;
+  border: 2px solid #dfe3e8; border-top-color: #1a73e8;
+  animation: mf-spin .8s linear infinite;
+}
+@keyframes mf-spin { to { transform: rotate(360deg); } }
+
+.mf-error { border-left-color: #d13b4a; }
+.mf-error-title { font-weight: 700; color: #b3303d; margin-bottom: 4px; }
+.mf-error-body { color: #4a5261; }
+.mf-error-hint { color: #6b7a8c; font-size: 12px; margin-top: 5px; }
+.mf-error .mf-btn { margin-top: 11px; background: #5f6774; border-color: #5f6774; }
+
+@media (prefers-reduced-motion: reduce) { .mf-spin { animation: none; } }

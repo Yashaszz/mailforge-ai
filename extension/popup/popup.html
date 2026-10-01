@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<style>
+  body { margin:0; width:300px; font:13px/1.5 Roboto,Arial,sans-serif; color:#1f2328; background:#fff; }
+  header { display:flex; align-items:center; gap:9px; padding:13px 15px; border-bottom:1px solid #e8eaed; }
+  .mark { width:28px; height:28px; border-radius:8px; display:grid; place-items:center;
+          background:linear-gradient(145deg,#f0c069,#e8a33d); color:#1a1206; }
+  .mark svg { width:16px; height:16px; }
+  h1 { margin:0; font-size:14px; } h1 i { color:#c98a16; }
+  p.sub { margin:1px 0 0; font-size:11px; color:#80868b; }
+  section { padding:13px 15px; border-bottom:1px solid #f1f3f4; }
+  label { display:block; font-size:10.5px; text-transform:uppercase; letter-spacing:.07em;
+          color:#80868b; margin-bottom:6px; }
+  input, select { width:100%; padding:7px 9px; font:12.5px Roboto,Arial,sans-serif;
+                  border:1px solid #dadce0; border-radius:6px; box-sizing:border-box; }
+  input:focus, select:focus { outline:none; border-color:#1a73e8; }
+  .status { display:flex; align-items:center; gap:7px; font-size:12px; }
+  .dot { width:8px; height:8px; border-radius:50%; background:#9aa3b0; flex:none; }
+  .dot.ok { background:#2f9e63; } .dot.bad { background:#d13b4a; }
+  button { width:100%; margin-top:9px; padding:8px; border-radius:6px; cursor:pointer;
+           font:500 12.5px Roboto,Arial,sans-serif; color:#fff; background:#1a73e8; border:none; }
+  button:hover { background:#1765cc; }
+  .hint { font-size:11px; color:#80868b; margin:7px 0 0; }
+  footer { padding:10px 15px; font-size:11px; color:#9aa3b0; }
+</style>
+</head>
+<body>
+<header>
+  <div class="mark">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+         stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/>
+    </svg>
+  </div>
+  <div><h1>Mailforge <i>AI</i></h1><p class="sub">Email forensics for Gmail</p></div>
+</header>
+
+<section>
+  <label>Backend</label>
+  <div class="status"><span class="dot" id="dot"></span><span id="status">checking…</span></div>
+</section>
+
+<section>
+  <label for="api">API endpoint</label>
+  <input id="api" type="url" spellcheck="false" placeholder="https://…">
+  <p class="hint">Point at a local server while developing.</p>
+</section>
+
+<section>
+  <label for="source">Message source</label>
+  <select id="source">
+    <option value="session">Gmail session — no setup</option>
+    <option value="gmail-api">Gmail API — OAuth, production path</option>
+  </select>
+  <p class="hint" id="source-hint"></p>
+  <button id="save" type="button">Save</button>
+</section>
+
+<footer>Open a message in Gmail and press <b>Analyse</b>.</footer>
+<script src="popup.js"></script>
+</body>
+</html>
