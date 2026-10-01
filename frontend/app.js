@@ -27,6 +27,7 @@ const SAMPLE_ACCENT = {
   '03_bec_ceo_wire_fraud.eml': 'var(--highrisk)',
   '04_multihop_relay_laundering.eml': 'var(--malicious)',
   '05_vpn_anonymised_phish.eml': 'var(--highrisk)',
+  '06_forged_relay_headers.eml': 'var(--malicious)',
 };
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g,

@@ -138,11 +138,14 @@ Open **<http://127.0.0.1:8000>** — that is the whole application.
 The dashboard ships with three bundled scenarios. Click each in order — they
 tell a complete story.
 
-| # | Scenario | Verdict | Score | The point |
-|---|---|---|---|---|
-| 1 | **Legitimate mail** | 🟢 `Allow` | 8 | SPF passes, DMARC aligns. The internal `127.0.0.1` relay hop is correctly skipped when picking the client IP. |
-| 2 | **Spoofed PayPal phishing** | 🔴 `Malicious` | 100 | `From: service@paypal.com`, but sent from an unrelated VPS. |
-| 3 | **CEO fraud (BEC)** | 🔴 `Malicious` | 74 | No authentication failure at all — because the lookalike domain publishes *nothing*. |
+| # | Scenario | Verdict | What it demonstrates |
+|---|---|---|---|
+| 1 | **Legitimate mail** | 🟢 `Allow` | SPF passes, DMARC aligns, and the internal `127.0.0.1` hop is correctly skipped when picking the client IP. |
+| 2 | **Spoofed PayPal phishing** | 🔴 `Malicious` | `From: service@paypal.com` sent from an unrelated VPS. SPF alone misses it; DMARC alignment catches it. |
+| 3 | **CEO fraud (BEC)** | 🔴 `Malicious` | No failed check at all — the lookalike domain publishes *nothing*. Scoring the absence is what catches it. |
+| 4 | **Anonymised sender (VPN)** | 🔴 `Malicious` | Sent straight from a commercial VPN exit, so the real network is unrecoverable. |
+| 5 | **Multi-hop relay laundering** | 🔴 `Malicious` | Routed Lagos → Sofia → **Tor exit** → VPN before delivery, plotted on the world map. |
+| 6 | **Forged relay headers** | 🔴 `Malicious` | Fake internal hops prepended to fake a trusted origin — the timestamps make the forgery provable. |
 
 **Scenario 2 is the one to dwell on.** SPF alone does not catch a brand spoof —
 an attacker passes SPF for their own domain all day long. What catches it is
@@ -257,7 +260,7 @@ cd backend
 python -m pytest
 ```
 
-**68 tests, under a second, no network required.**
+**81 backend tests plus 21 extension tests, no network required.**
 
 - DKIM is tested by signing a message with a keypair generated for this repo
   and verifying it through a stub resolver — real signature verification,
@@ -268,6 +271,11 @@ python -m pytest
 - Risk scoring is pinned so the demo verdicts cannot silently regress.
 - API tests cover the response contract, oversized uploads, empty files,
   non-email input, and malformed messages.
+- Relay-timestamp forgery detection is tested against clock skew and
+  cross-timezone chains so it cannot fire on ordinary mail.
+- Extension tests (`cd extension && npm test`) pin message retrieval
+  byte-for-byte, since a single altered byte turns a valid DKIM
+  signature into a reported forgery.
 
 ---
 

@@ -66,6 +66,11 @@ SAMPLE_LIBRARY: dict[str, tuple[str, str]] = {
         "Credential phishing sent straight from a commercial VPN exit, so the "
         "sender's real network is hidden. Shows VPN detection on the origin.",
     ),
+    "06_forged_relay_headers.eml": (
+        "Forged relay headers",
+        "Fake internal hops prepended to disguise the origin as the company's "
+        "own mail server. The timestamps make the forgery provable.",
+    ),
     "04_multihop_relay_laundering.eml": (
         "Multi-hop relay laundering",
         "Invoice fraud routed through four countries to obscure its origin. "

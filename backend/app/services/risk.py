@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
+from datetime import timedelta
 
 from .email_auth import AuthReport
 from .network_intel import NetworkIntel
@@ -106,6 +107,7 @@ def assess(
     _score_infrastructure(parsed, report, reasons)
     _score_content(parsed, reasons)
     _score_network(parsed, networks or {}, reasons)
+    _score_relay_consistency(parsed, reasons)
 
     reasons.sort(key=lambda r: (SEVERITY_ORDER.get(r.severity, 9), -r.points))
 
@@ -497,3 +499,69 @@ def _score_network(
                 f"trail between the sender and the recipient."
             ),
         ))
+
+
+# --------------------------------------------------------------------------
+# relay-chain consistency
+# --------------------------------------------------------------------------
+
+#: Server clocks genuinely disagree. Only treat a backwards jump larger than
+#: this as evidence of tampering rather than ordinary skew.
+CLOCK_SKEW_TOLERANCE = timedelta(minutes=10)
+
+
+def _score_relay_consistency(parsed: ParsedEmail, reasons: list[RiskReason]) -> None:
+    """Look for a forged relay path.
+
+    Each ``Received`` header is prepended by the server that handled the
+    message, so reading top to bottom the timestamps must run backwards in
+    time. An attacker fabricating hops to invent a respectable origin has to
+    guess plausible times for headers they never actually generated, and
+    getting that ordering right is easy to overlook.
+
+    A hop that claims to have received the message *before* the hop beneath it
+    sent it is therefore physically impossible, and is strong evidence that
+    part of the chain was written by the sender rather than by a relay.
+    """
+    hops = parsed.received_chain
+    timed = [h for h in hops if h.timestamp is not None]
+    if len(timed) < 2:
+        return
+
+    violations: list[str] = []
+    for newer, older in zip(timed, timed[1:]):
+        # `newer` was added after `older`, so its timestamp cannot be earlier.
+        drift = older.timestamp - newer.timestamp
+        if drift > CLOCK_SKEW_TOLERANCE:
+            violations.append(
+                f"hop {newer.index} ({newer.by_host or 'unknown'}) records "
+                f"{newer.timestamp:%H:%M:%S}, which is "
+                f"{_humanise(drift)} before hop {older.index} "
+                f"({older.by_host or 'unknown'}) at {older.timestamp:%H:%M:%S}"
+            )
+
+    if violations:
+        reasons.append(RiskReason(
+            code="relay_timestamps_impossible",
+            severity="high",
+            points=24,
+            title="Relay timestamps are physically impossible",
+            detail=(
+                "A server recorded receiving this message before the server "
+                "below it in the chain sent it: " + "; ".join(violations[:2])
+                + ". Relays stamp their own time as they prepend each header, "
+                "so this ordering cannot occur naturally and indicates part of "
+                "the path was fabricated to disguise the true origin."
+            ),
+        ))
+
+
+def _humanise(delta: timedelta) -> str:
+    seconds = int(abs(delta.total_seconds()))
+    if seconds < 90:
+        return f"{seconds} seconds"
+    if seconds < 5400:
+        return f"{seconds // 60} minutes"
+    if seconds < 172800:
+        return f"{seconds // 3600} hours"
+    return f"{seconds // 86400} days"

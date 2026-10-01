@@ -166,3 +166,83 @@ def test_score_is_capped_at_100():
 
     assert result.score == 100
     assert result.level == "Malicious"
+
+
+# --------------------------------------------------------------------------
+# relay-chain consistency
+# --------------------------------------------------------------------------
+
+def _chain(*hops: str) -> bytes:
+    """Build a message whose Received headers are given newest-first."""
+    return build_message(extra_headers="\n".join(hops))
+
+
+def test_forged_relay_timestamps_are_detected():
+    """A hop cannot receive a message before the hop below it sent it."""
+    raw = _chain(
+        # Newest hop claims 09:00 ...
+        "Received: from relay.test (relay.test [45.33.32.9])\n"
+        "\tby mx01.recipient.test with ESMTP id BBB222;"
+        " Tue, 9 Sep 2026 09:00:00 +0000",
+        # ... but the hop beneath it only sent at 11:00.
+        "Received: from origin.test (origin.test [91.198.174.192])\n"
+        "\tby relay.test with ESMTP id AAA111;"
+        " Tue, 9 Sep 2026 11:00:00 +0000",
+    )
+    result = assess(parse_eml(raw), _report(dmarc="none", policy=None))
+
+    reason = next(r for r in result.reasons if r.code == "relay_timestamps_impossible")
+    assert reason.severity == "high"
+    assert "2 hours" in reason.detail
+
+
+def test_a_normal_chain_is_not_flagged():
+    raw = _chain(
+        "Received: from relay.test (relay.test [45.33.32.9])\n"
+        "\tby mx01.recipient.test with ESMTP id BBB222;"
+        " Tue, 9 Sep 2026 11:00:30 +0000",
+        "Received: from origin.test (origin.test [91.198.174.192])\n"
+        "\tby relay.test with ESMTP id AAA111;"
+        " Tue, 9 Sep 2026 11:00:00 +0000",
+    )
+    codes = {r.code for r in assess(parse_eml(raw), _report()).reasons}
+    assert "relay_timestamps_impossible" not in codes
+
+
+def test_ordinary_clock_skew_is_tolerated():
+    """Server clocks disagree by minutes all the time; that is not forgery."""
+    raw = _chain(
+        "Received: from relay.test (relay.test [45.33.32.9])\n"
+        "\tby mx01.recipient.test with ESMTP id BBB222;"
+        " Tue, 9 Sep 2026 10:58:00 +0000",
+        "Received: from origin.test (origin.test [91.198.174.192])\n"
+        "\tby relay.test with ESMTP id AAA111;"
+        " Tue, 9 Sep 2026 11:00:00 +0000",
+    )
+    codes = {r.code for r in assess(parse_eml(raw), _report()).reasons}
+    assert "relay_timestamps_impossible" not in codes
+
+
+def test_timezones_are_compared_correctly_not_wall_clock():
+    """+0530 and +0000 wall times look reversed but are consistent."""
+    raw = _chain(
+        "Received: from relay.test (relay.test [45.33.32.9])\n"
+        "\tby mx01.recipient.test with ESMTP id BBB222;"
+        " Tue, 9 Sep 2026 16:31:00 +0530",       # 11:01 UTC
+        "Received: from origin.test (origin.test [91.198.174.192])\n"
+        "\tby relay.test with ESMTP id AAA111;"
+        " Tue, 9 Sep 2026 11:00:00 +0000",       # 11:00 UTC
+    )
+    codes = {r.code for r in assess(parse_eml(raw), _report()).reasons}
+    assert "relay_timestamps_impossible" not in codes
+
+
+def test_undated_hops_do_not_trigger_a_false_positive():
+    raw = _chain(
+        "Received: from relay.test (relay.test [45.33.32.9]) by mx01.recipient.test",
+        "Received: from origin.test (origin.test [91.198.174.192])\n"
+        "\tby relay.test with ESMTP id AAA111;"
+        " Tue, 9 Sep 2026 11:00:00 +0000",
+    )
+    codes = {r.code for r in assess(parse_eml(raw), _report()).reasons}
+    assert "relay_timestamps_impossible" not in codes

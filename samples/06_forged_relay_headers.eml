@@ -1,0 +1,37 @@
+Return-Path: <it-helpdesk@internal-it-support.example>
+Received: from mx01.recipient-corp.in (localhost [127.0.0.1])
+	by mx01.recipient-corp.in (Postfix) with ESMTP id 7A3C9E1B2D40
+	for <staff@recipient-corp.in>; Mon, 15 Sep 2026 10:12:40 +0530 (IST)
+Received: from vps-8812.cheap-cloud-host.example (unknown [91.219.236.10])
+	by mx01.recipient-corp.in (Postfix) with ESMTP id 5D2F8A0C3B91
+	for <staff@recipient-corp.in>; Mon, 15 Sep 2026 10:12:36 +0530 (IST)
+Received: from mail.recipient-corp.in (mail.recipient-corp.in [10.14.2.11])
+	by smtp-internal.recipient-corp.in (Postfix) with ESMTPS id 3B1A7C5E9F62
+	for <staff@recipient-corp.in>; Mon, 15 Sep 2026 14:48:02 +0530 (IST)
+Received: from workstation-desk-112.recipient-corp.in (workstation-desk-112 [10.14.9.112])
+	by mail.recipient-corp.in (Postfix) with ESMTP id 1F6E4D8A2C07
+	for <staff@recipient-corp.in>; Mon, 15 Sep 2026 14:47:55 +0530 (IST)
+MIME-Version: 1.0
+From: "IT Helpdesk - Recipient Corp" <it-helpdesk@internal-it-support.example>
+Reply-To: helpdesk.recovery@internal-it-support.example
+To: staff@recipient-corp.in
+Subject: Mandatory security update - re-enter your credentials today
+Message-ID: <5D2F8A0C3B91.it@internal-it-support.example>
+Date: Mon, 15 Sep 2026 10:12:30 +0530
+X-Mailer: PHPMailer 6.9.1
+Content-Type: text/plain; charset="utf-8"
+
+Dear Colleague,
+
+Our records show your workstation has not completed the mandatory security
+update rolled out by the IT department this week.
+
+To avoid being locked out of your account at the end of the day, please
+confirm your network credentials using the internal portal link below.
+
+    http://internal-it-support.example/portal/verify
+
+This request originated from the internal helpdesk system and is urgent.
+
+IT Helpdesk
+Recipient Corp
