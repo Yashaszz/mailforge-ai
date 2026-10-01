@@ -23,6 +23,16 @@
         "https://mail.google.com/*"
       ],
       "js": [
+        "content/page-bridge.js"
+      ],
+      "world": "MAIN",
+      "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "https://mail.google.com/*"
+      ],
+      "js": [
         "content/gmail.js"
       ],
       "css": [

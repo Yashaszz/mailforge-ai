@@ -45,10 +45,22 @@
     }
 
     // Same-origin here, so the user's Gmail cookies ride along automatically.
+    const { token, via } = await dom.getSessionToken();
+    if (!token) {
+      const err = new Error('Could not read the Gmail session token from the page.');
+      err.hint = via === 'bridge-silent'
+        ? 'The page bridge did not load. Reload the Gmail tab, and reload the '
+          + 'extension at chrome://extensions if you just updated it.'
+        : 'Gmail did not expose a token this build recognises. Switch the '
+          + 'message source to "Gmail API" in the extension popup.';
+      err.diagnostic = via;
+      throw err;
+    }
+
     return new sources.SessionSource().getRawMessage({
       messageId: message.messageId,
       userIndex: dom.getUserIndex(),
-      ik: dom.getSessionToken(),
+      ik: token,
     });
   }
 
@@ -78,7 +90,8 @@
 
       panel.renderResult(host, res.result, { reportBase: apiBase, raw });
     } catch (err) {
-      panel.renderError(host, err.message || String(err), err.hint || '');
+      panel.renderError(host, err.message || String(err),
+        [err.hint, err.diagnostic && `(${err.diagnostic})`].filter(Boolean).join(' '));
       host.querySelector('.mf-retry')?.addEventListener('click', () => {
         busy = false;
         analyseOpenMessage();

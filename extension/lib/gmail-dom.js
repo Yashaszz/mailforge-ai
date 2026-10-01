@@ -13,29 +13,75 @@ export function getUserIndex() {
 }
 
 /**
- * Gmail's per-session request token. Required to build the "Show original"
- * URL. It appears in several places depending on the build, so try each.
+ * Gmail's per-session request token (`ik`), required to build the
+ * "Show original" URL.
+ *
+ * Gmail keeps it on `window.GLOBALS`, which lives in the page's JavaScript
+ * context. Content scripts run in an isolated world and share only the DOM,
+ * so that global is not reachable from here — content/page-bridge.js runs in
+ * the main world and hands it over. The DOM-only strategies below are
+ * fallbacks for builds where that does not work.
+ *
+ * @returns {Promise<string|null>}
  */
-export function getSessionToken() {
-  // 1. The GLOBALS array Gmail defines inline; index 9 has held `ik` for years.
-  try {
-    const g = window.GLOBALS;
-    if (Array.isArray(g) && typeof g[9] === 'string' && g[9].length > 4) return g[9];
-  } catch { /* page context may be isolated */ }
+export async function getSessionToken({ timeout = 1500 } = {}) {
+  const bridge = await askPageBridge(timeout);
+  if (bridge.token) return { token: bridge.token, via: 'page-bridge' };
 
-  // 2. Any inline script carrying an "ik" entry.
+  const scraped = scrapeTokenFromDom();
+  if (scraped) return { token: scraped, via: 'dom' };
+
+  // Report *why* nothing was found: a bridge that never answered is a
+  // different failure from one that answered with nothing, and they need
+  // different fixes.
+  return {
+    token: null,
+    via: bridge.replied ? 'bridge-answered-empty' : 'bridge-silent',
+  };
+}
+
+function askPageBridge(timeout) {
+  const REQUEST = 'mailforge:get-session-token';
+  const REPLY = 'mailforge:session-token';
+
+  return new Promise((resolve) => {
+    let done = false;
+    const finish = (value) => {
+      if (done) return;
+      done = true;
+      window.removeEventListener('message', onMessage);
+      clearTimeout(timer);
+      resolve(value);
+    };
+
+    const onMessage = (event) => {
+      if (event.source !== window || event.data?.type !== REPLY) return;
+      finish({ token: event.data.token || null, replied: true });
+    };
+
+    const timer = setTimeout(() => finish({ token: null, replied: false }), timeout);
+    window.addEventListener('message', onMessage);
+    window.postMessage({ type: REQUEST }, window.location.origin);
+  });
+}
+
+/** DOM-only fallbacks, usable from the isolated world. */
+function scrapeTokenFromDom() {
+  // A rendered link that already carries one.
+  const link = document.querySelector('a[href*="ik="], link[href*="ik="], form[action*="ik="]');
+  if (link) {
+    const attr = link.getAttribute('href') || link.getAttribute('action') || '';
+    const m = attr.match(/[?&]ik=([^&"'\s]+)/);
+    if (m) return decodeURIComponent(m[1]);
+  }
+
+  // An inline script carrying one, in either the JSON or the array form.
   for (const script of document.scripts) {
     const text = script.textContent;
     if (!text || text.length > 2_000_000) continue;
-    const m = text.match(/["']ik["']\s*:\s*["']([^"']{4,})["']/);
+    const m = text.match(/["']ik["']\s*:\s*["']([^"']{4,})["']/)
+      || text.match(/[?&]ik=([A-Za-z0-9_-]{6,40})/);
     if (m) return m[1];
-  }
-
-  // 3. A rendered link that already carries one.
-  const link = document.querySelector('a[href*="ik="], link[href*="ik="]');
-  if (link) {
-    const m = link.getAttribute('href').match(/[?&]ik=([^&"']+)/);
-    if (m) return decodeURIComponent(m[1]);
   }
 
   return null;
