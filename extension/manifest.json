@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Mailforge AI \u2014 Email Forensics for Gmail",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Authenticates senders and traces where a message really came from, inside Gmail.",
   "minimum_chrome_version": "116",
   "permissions": [

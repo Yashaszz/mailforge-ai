@@ -129,3 +129,9 @@
 }
 .mf-xcheck b { color: #2c333d; }
 .mf-xmark { font-weight: 700; flex: none; }
+
+/* The button after an extension reload: still present, no longer connected. */
+.mf-trigger.mf-stale {
+  opacity: .5; cursor: not-allowed;
+  background: #f1f3f4; border-color: #dadce0; color: #80868b;
+}

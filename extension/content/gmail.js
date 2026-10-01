@@ -20,7 +20,45 @@
   let currentMessageId = null;
   let busy = false;
 
-  const send = (msg) => chrome.runtime.sendMessage(msg);
+  /* Talking to the service worker.
+   *
+   * Two things go wrong here in Manifest V3 and both look like "the extension
+   * stopped working":
+   *
+   *  1. The worker is shut down when idle. Chrome restarts it on the next
+   *     message, but a message arriving exactly as it terminates is lost with
+   *     "Receiving end does not exist" -- so one retry recovers it.
+   *  2. Reloading the extension orphans the content scripts already running
+   *     in open tabs. Those can never reach the new worker, and the only cure
+   *     is reloading the page, so say that instead of failing obscurely.
+   */
+  const ASLEEP = /Receiving end does not exist|message port closed/i;
+  const ORPHANED = /Extension context invalidated/i;
+
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  async function send(msg, { retry = true } = {}) {
+    try {
+      return await chrome.runtime.sendMessage(msg);
+    } catch (err) {
+      const text = err?.message || String(err);
+
+      if (ORPHANED.test(text)) {
+        throw Object.assign(new Error('The extension was reloaded.'), {
+          hint: 'Refresh this Gmail tab to reconnect.',
+        });
+      }
+
+      if (retry && ASLEEP.test(text)) {
+        await sleep(250);                       // let the worker finish booting
+        return send(msg, { retry: false });
+      }
+
+      throw Object.assign(new Error('Could not reach the Mailforge background service.'), {
+        hint: 'Reload the extension at chrome://extensions, then refresh this tab.',
+      });
+    }
+  }
 
   async function settings() {
     const res = await send({ type: 'getSettings' });
@@ -144,5 +182,26 @@
     anchor.appendChild(button);
   }
 
-  dom.onViewChange(injectButton);
-})();
+  /* Gmail mutates constantly, so the observer fires often. Once the extension
+   * is reloaded this script is orphaned and every call throws -- detach
+   * rather than spraying errors into the console for the rest of the session,
+   * and mark the stale button so the state is visible instead of silent. */
+  const stop = dom.onViewChange(() => {
+    if (!chrome.runtime?.id) {
+      stop();
+      const stale = document.getElementById(BUTTON_ID);
+      if (stale) {
+        stale.title = 'Mailforge was reloaded — refresh this tab to reconnect';
+        stale.classList.add('mf-stale');
+      }
+      return;
+    }
+    injectButton();
+  });
+})().catch((err) => {
+  // A tab open from before an extension reload cannot load the new modules.
+  const orphaned = /Extension context invalidated/i.test(err?.message || '');
+  console.warn('[Mailforge]', orphaned
+    ? 'This tab predates the current extension build; refresh it to reconnect.'
+    : err);
+});

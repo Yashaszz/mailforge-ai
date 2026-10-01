@@ -72,3 +72,31 @@ test('reports no open message on a message list', async () => {
   assert.equal(dom.getOpenMessage(), null);
   assert.equal(dom.isThreadOpen(), false);
 });
+
+test('onViewChange returns a working detach, so an orphaned script can stop', async () => {
+  const observed = { disconnected: false };
+  globalThis.MutationObserver = class {
+    constructor(cb) { this.cb = cb; }
+    observe() {}
+    disconnect() { observed.disconnected = true; }
+  };
+  const listeners = new Set();
+  globalThis.window = {
+    addEventListener: (_t, fn) => listeners.add(fn),
+    removeEventListener: (_t, fn) => listeners.delete(fn),
+  };
+  stubDom('<div data-message-id="#msg-f:1"></div>');
+  globalThis.document.body = {};
+
+  let fired = 0;
+  const stop = dom.onViewChange(() => { fired += 1; }, { delay: 1 });
+  assert.equal(typeof stop, 'function');
+
+  stop();
+  assert.equal(observed.disconnected, true, 'must disconnect the observer');
+  assert.equal(listeners.size, 0, 'must remove the hashchange listener');
+
+  // The pending debounced call is cancelled too, so nothing runs after detach.
+  await new Promise((r) => setTimeout(r, 20));
+  assert.equal(fired, 0);
+});
