@@ -61,7 +61,7 @@ export function renderError(host, error, hint = '') {
     </div>`;
 }
 
-export function renderResult(host, data, { reportBase, raw }) {
+export function renderResult(host, data, { reportBase, raw, retrieval }) {
   const a = data.assessment;
   const level = LEVEL[a.level] || { c: '#6b7a8c', label: a.level };
   const auth = data.authentication;
@@ -113,6 +113,8 @@ export function renderResult(host, data, { reportBase, raw }) {
             </li>`).join('')}
         </ul>` : ''}
 
+      ${provenance(retrieval)}
+
       <div class="mf-actions">
         <button class="mf-btn mf-report" type="button">Open full forensic report</button>
         <span class="mf-brand">Mailforge AI</span>
@@ -143,4 +145,27 @@ export function reportUrlFor(base, raw) {
   for (const b of bytes) binary += String.fromCharCode(b);
   const b64url = btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   return `${root}#eml=${b64url}`;
+}
+
+/* Say where the analysed bytes came from.
+ *
+ * SPF, DKIM and DMARC are computed over exact bytes. If the message had to be
+ * recovered from Gmail's rendered HTML, a single reflowed line turns a valid
+ * signature into a reported forgery -- so an approximate retrieval is called
+ * out rather than presented as a cryptographic result. A security reviewer
+ * should be able to see which it was without reading the source.
+ */
+function provenance(retrieval) {
+  if (!retrieval) return '';
+  const approximate = /approximate|unknown/i.test(retrieval);
+
+  if (!approximate) {
+    return `<div class="mf-prov">Verified over the message verbatim
+      · <span>${esc(retrieval)}</span></div>`;
+  }
+  return `<div class="mf-prov mf-prov-warn">
+    Signature results are <b>not reliable</b> for this message: the source had
+    to be recovered from Gmail's rendered view (${esc(retrieval)}), which can
+    alter bytes that DKIM covers. Switch the message source to
+    <b>Gmail API</b> in the extension popup for exact bytes.</div>`;
 }

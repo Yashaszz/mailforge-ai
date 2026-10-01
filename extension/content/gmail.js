@@ -27,7 +27,9 @@
     return res?.ok ? res : { apiBase: '', source: 'session' };
   }
 
-  /** Obtain the raw message, through whichever source is configured. */
+  /** Obtain the raw message, through whichever source is configured.
+   *  Returns the bytes and how they were obtained, because a signature
+   *  verdict is only as trustworthy as the bytes it was computed over. */
   async function getRaw(message, sourceId) {
     if (sourceId === 'gmail-api') {
       // chrome.identity is unavailable here, so the worker performs this one.
@@ -41,7 +43,7 @@
         err.hint = res?.hint || '';
         throw err;
       }
-      return res.raw;
+      return { raw: res.raw, retrieval: 'Gmail API (verbatim)' };
     }
 
     // Same-origin here, so the user's Gmail cookies ride along automatically.
@@ -57,11 +59,13 @@
       throw err;
     }
 
-    return new sources.SessionSource().getRawMessage({
+    const source = new sources.SessionSource();
+    const raw = await source.getRawMessage({
       messageId: message.messageId,
       userIndex: dom.getUserIndex(),
       ik: token,
     });
+    return { raw, retrieval: source.lastRetrieval || 'unknown' };
   }
 
   async function analyseOpenMessage() {
@@ -76,7 +80,7 @@
 
     try {
       const { apiBase, source } = await settings();
-      const raw = await getRaw(message, source);
+      const { raw, retrieval } = await getRaw(message, source);
 
       panel.renderLoading(host, 'Authenticating sender and tracing origin…');
       const res = await send({
@@ -88,7 +92,7 @@
       if (!res?.ok) throw Object.assign(new Error(res?.error || 'Analysis failed.'),
         { hint: res?.hint });
 
-      panel.renderResult(host, res.result, { reportBase: apiBase, raw });
+      panel.renderResult(host, res.result, { reportBase: apiBase, raw, retrieval });
     } catch (err) {
       panel.renderError(host, err.message || String(err),
         [err.hint, err.diagnostic && `(${err.diagnostic})`].filter(Boolean).join(' '));

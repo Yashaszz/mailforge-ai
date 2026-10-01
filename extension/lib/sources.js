@@ -60,8 +60,59 @@ export class SessionSource {
       );
     }
 
-    return extractRawFromShowOriginal(await res.text());
+    const html = await res.text();
+
+    // Prefer the page's own download link: it serves the message verbatim.
+    // Scraping the rendered <pre> cannot be trusted for anything
+    // cryptographic -- Gmail reflows and escapes it for display, and a single
+    // altered byte turns a valid DKIM signature into a reported forgery.
+    const download = findDownloadLink(html, res.url || url);
+    if (download) {
+      const exact = await fetch(download, { credentials: 'include' });
+      if (exact.ok) {
+        const raw = await exact.text();
+        if (looksLikeMessage(raw)) {
+          this.lastRetrieval = 'download-original (verbatim)';
+          return raw;
+        }
+      }
+    }
+
+    this.lastRetrieval = 'rendered HTML (approximate)';
+    return extractRawFromShowOriginal(html);
   }
+}
+
+/**
+ * Locate the "Download Original" link on the Show-original page.
+ *
+ * Found by shape rather than by a fixed URL, so a Gmail change to the
+ * endpoint does not silently push us back onto the lossy path.
+ */
+export function findDownloadLink(html, baseUrl) {
+  const candidates = [
+    /<a[^>]+download[^>]*href=["']([^"']+)["']/i,
+    /<a[^>]+href=["']([^"']+)["'][^>]*download/i,
+    /href=["']([^"']*view=att[^"']*disp=comp[^"']*)["']/i,
+    /href=["']([^"']*view=om[^"']*dmode=txt[^"']*)["']/i,
+  ];
+
+  for (const pattern of candidates) {
+    const m = html.match(pattern);
+    if (!m) continue;
+    try {
+      return new URL(decodeEntities(m[1]), baseUrl).toString();
+    } catch { /* malformed href: try the next shape */ }
+  }
+  return null;
+}
+
+/** A retrieved body must at least look like RFC 5322 before we trust it. */
+export function looksLikeMessage(text) {
+  if (!text) return false;
+  if (/^\s*<(!doctype|html)\b/i.test(text)) return false;   // got a web page
+  // Structure, not size: at least one header and a header/body separator.
+  return /^[A-Za-z][A-Za-z0-9-]*:\s/m.test(text) && /\r?\n\r?\n/.test(text);
 }
 
 /**
@@ -155,6 +206,7 @@ export class GmailApiSource {
 
     const { raw } = await res.json();
     if (!raw) throw new MessageSourceError('Gmail API returned no message body.');
+    this.lastRetrieval = 'Gmail API (verbatim)';
     return base64UrlToText(raw);
   }
 }

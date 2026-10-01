@@ -108,3 +108,14 @@
 }
 #mailforge-panel .mf-card { box-sizing: border-box; width: 100%; }
 #mailforge-panel * { box-sizing: border-box; }
+
+.mf-prov {
+  margin-top: 11px; padding-top: 9px; border-top: 1px solid #f0f2f5;
+  font-size: 11.5px; color: #80868b;
+}
+.mf-prov span { font-family: 'Roboto Mono', Consolas, monospace; }
+.mf-prov-warn {
+  margin-top: 11px; padding: 9px 11px; border: 1px solid #f0c36d;
+  border-radius: 6px; background: #fdf6e3; color: #7a5b00; line-height: 1.45;
+}
+.mf-prov-warn b { color: #5c4400; }
