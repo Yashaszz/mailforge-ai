@@ -76,7 +76,7 @@
       if (!res?.ok) throw Object.assign(new Error(res?.error || 'Analysis failed.'),
         { hint: res?.hint });
 
-      panel.renderResult(host, res.result, { reportBase: apiBase });
+      panel.renderResult(host, res.result, { reportBase: apiBase, raw });
     } catch (err) {
       panel.renderError(host, err.message || String(err), err.hint || '');
       host.querySelector('.mf-retry')?.addEventListener('click', () => {

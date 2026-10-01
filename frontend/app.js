@@ -341,6 +341,28 @@ async function boot() {
   }
   await loadSamples();
   observeReveals();
+  consumeHandoff();
+}
+
+/* The Chrome extension hands a message over in the URL fragment, which the
+   browser never sends to the server — so the message is not logged or stored
+   anywhere in transit, and no report-sharing backend is needed. */
+function consumeHandoff() {
+  const match = /[#&]eml=([A-Za-z0-9\-_]+)/.exec(location.hash);
+  if (!match) return;
+
+  // Clear it immediately: the message should not sit in the address bar,
+  // the back button, or anything the user later shares.
+  history.replaceState(null, '', location.pathname + location.search);
+
+  try {
+    const b64 = match[1].replace(/-/g, '+').replace(/_/g, '/');
+    const binary = atob(b64.padEnd(Math.ceil(b64.length / 4) * 4, '='));
+    const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
+    analyseBlob(new Blob([bytes], { type: 'message/rfc822' }), 'from-gmail.eml');
+  } catch {
+    toast('Could not read the message handed over from Gmail');
+  }
 }
 
 async function loadSamples() {

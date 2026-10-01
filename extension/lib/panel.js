@@ -54,7 +54,7 @@ export function renderError(host, error, hint = '') {
     </div>`;
 }
 
-export function renderResult(host, data, { reportBase }) {
+export function renderResult(host, data, { reportBase, raw }) {
   const a = data.assessment;
   const level = LEVEL[a.level] || { c: '#6b7a8c', label: a.level };
   const auth = data.authentication;
@@ -114,8 +114,26 @@ export function renderResult(host, data, { reportBase }) {
 
   host.querySelector('.mf-close')?.addEventListener('click', () => host.remove());
   host.querySelector('.mf-report')?.addEventListener('click', () => {
-    // Hand the dashboard the finished analysis rather than making it re-run.
-    sessionStorage.setItem('mailforge:last', JSON.stringify(data));
-    chrome.runtime.sendMessage({ type: 'openReport', url: reportBase });
+    chrome.runtime.sendMessage({ type: 'openReport', url: reportUrlFor(reportBase, raw) });
   });
+}
+
+/* Hand the message to the dashboard through the URL fragment.
+ *
+ * A fragment never reaches the server, so the message body is not logged or
+ * stored anywhere en route, and no report-sharing backend is needed to make
+ * the hand-off work. Oversized messages (big attachments) just open the
+ * dashboard, where the file can be dropped in directly.
+ */
+export function reportUrlFor(base, raw) {
+  const root = String(base || '').replace(/\/+$/, '') + '/';
+  if (!raw) return root;
+
+  const bytes = new TextEncoder().encode(raw);
+  if (bytes.length > 400_000) return root;
+
+  let binary = '';
+  for (const b of bytes) binary += String.fromCharCode(b);
+  const b64url = btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  return `${root}#eml=${b64url}`;
 }
