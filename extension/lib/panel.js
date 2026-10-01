@@ -32,7 +32,14 @@ export function mountPoint(anchor) {
   host = document.createElement('div');
   host.id = 'mailforge-panel';
   host.className = 'mf-panel';
-  anchor.parentElement?.insertBefore(host, anchor.nextSibling) || anchor.appendChild(host);
+
+  if (anchor?.parent) {
+    anchor.parent.insertBefore(host, anchor.before || null);
+  } else if (anchor?.parentElement) {           // legacy single-element anchor
+    anchor.parentElement.insertBefore(host, anchor.nextSibling);
+  } else {
+    anchor?.appendChild(host);
+  }
   return host;
 }
 

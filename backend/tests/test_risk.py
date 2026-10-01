@@ -61,8 +61,8 @@ def test_dmarc_failure_under_a_reject_policy_is_malicious():
     assert result.reasons[0].severity == "critical"
 
 
-def test_reply_to_mismatch_is_flagged():
-    raw = build_message(
+def _reply_to_message() -> bytes:
+    return build_message(
         extra_headers=(
             "Reply-To: attacker@elsewhere.test\n"
             "Received: from mail.example-sender.test (mail [45.33.32.9])\n"
@@ -70,10 +70,42 @@ def test_reply_to_mismatch_is_flagged():
             " Tue, 9 Sep 2026 14:22:29 +0530"
         )
     )
-    result = assess(parse_eml(raw), _report())
+
+
+def test_reply_to_mismatch_is_scored_when_the_sender_is_not_authenticated():
+    result = assess(
+        parse_eml(_reply_to_message()),
+        _report(spf="fail", dkim="none", dmarc="fail"),
+    )
+
+    reason = next(r for r in result.reasons if r.code == "reply_to_mismatch")
+    assert reason.severity == "high"
+    assert reason.points > 0
+
+
+def test_reply_to_mismatch_is_not_scored_when_dmarc_passes():
+    """Every email service provider routes replies elsewhere. Scoring that on
+    authenticated mail flags ordinary newsletters as dangerous."""
+    result = assess(parse_eml(_reply_to_message()), _report())
 
     codes = {r.code for r in result.reasons}
-    assert "reply_to_mismatch" in codes
+    assert "reply_to_mismatch" not in codes
+
+    reason = next(r for r in result.reasons if r.code == "reply_to_mismatch_authenticated")
+    assert reason.points == 0
+    assert result.level == "Allow"
+
+
+def test_dkim_failure_is_damped_when_dmarc_still_passes():
+    """A forwarder breaking a signature is not the same as forgery."""
+    passing = assess(parse_eml(_reply_to_message()), _report(dkim="fail"))
+    failing = assess(parse_eml(_reply_to_message()),
+                     _report(dkim="fail", spf="fail", dmarc="fail"))
+
+    damped = next(r for r in passing.reasons if r.code == "dkim_fail_dmarc_pass")
+    full = next(r for r in failing.reasons if r.code == "dkim_fail")
+    assert damped.points < full.points
+    assert passing.score < failing.score
 
 
 def test_brand_impersonation_in_the_display_name_is_flagged():

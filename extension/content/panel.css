@@ -98,3 +98,13 @@
 .mf-error .mf-btn { margin-top: 11px; background: #5f6774; border-color: #5f6774; }
 
 @media (prefers-reduced-motion: reduce) { .mf-spin { animation: none; } }
+
+/* The card lives in the message's own column, so it must behave like block
+   content there: full width, no float inheritance, never wider than its box. */
+#mailforge-panel.mf-panel {
+  display: block; width: 100%; max-width: 100%;
+  box-sizing: border-box; clear: both; float: none;
+  margin: 10px 0 14px;
+}
+#mailforge-panel .mf-card { box-sizing: border-box; width: 100%; }
+#mailforge-panel * { box-sizing: border-box; }

@@ -67,7 +67,7 @@
   async function analyseOpenMessage() {
     if (busy) return;
     const message = dom.getOpenMessage();
-    const anchor = dom.findToolbarAnchor();
+    const anchor = dom.findPanelAnchor();
     if (!message || !anchor) return;
 
     busy = true;

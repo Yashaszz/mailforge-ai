@@ -102,7 +102,7 @@ def assess(
     _score_dmarc(report, reasons)
     _score_spf(report, reasons)
     _score_dkim(report, reasons)
-    _score_identity(parsed, reasons)
+    _score_identity(parsed, report, reasons)
     _score_infrastructure(parsed, report, reasons)
     _score_content(parsed, reasons)
     _score_network(parsed, networks or {}, reasons)
@@ -246,11 +246,25 @@ def _score_spf(report: AuthReport, reasons: list[RiskReason]) -> None:
 def _score_dkim(report: AuthReport, reasons: list[RiskReason]) -> None:
     dkim = report.dkim
     if dkim.result == "fail":
-        reasons.append(RiskReason(
-            "dkim_fail", "high", 22,
-            "DKIM signature did not verify",
-            "The message was altered after signing, or the signature was forged.",
-        ))
+        # If DMARC passed, an aligned identifier was still proven, so a broken
+        # signature is far more likely a forwarder or a relay rewriting the
+        # message than forgery.
+        if report.dmarc.result == "pass":
+            reasons.append(RiskReason(
+                "dkim_fail_dmarc_pass", "low", 6,
+                "DKIM signature did not verify",
+                "The sender is still authenticated: DMARC passed on the other "
+                "identifier. A broken signature alongside a passing DMARC "
+                "usually means a mailing list or forwarder altered the message "
+                "in transit.",
+            ))
+        else:
+            reasons.append(RiskReason(
+                "dkim_fail", "high", 22,
+                "DKIM signature did not verify",
+                "The message was altered after signing, or the signature was "
+                "forged, and no other identifier authenticates the sender.",
+            ))
     elif dkim.result == "none":
         reasons.append(RiskReason(
             "dkim_none", "low", 8,
@@ -269,31 +283,58 @@ def _score_dkim(report: AuthReport, reasons: list[RiskReason]) -> None:
 # identity signals
 # --------------------------------------------------------------------------
 
-def _score_identity(parsed: ParsedEmail, reasons: list[RiskReason]) -> None:
+def _score_identity(
+    parsed: ParsedEmail, report: AuthReport, reasons: list[RiskReason]
+) -> None:
     from_domain = parsed.from_domain
 
-    # Reply-To pointing somewhere else is the defining mechanic of BEC: the
-    # victim replies to the attacker, not to the spoofed sender.
+    # A passing DMARC means the domain owner authorised this send and the
+    # visible From is authenticated. Routing details that look alarming on an
+    # unauthenticated message -- a different Reply-To, a bounce domain that is
+    # not the From domain -- are simply how every email service provider
+    # operates, so on authenticated mail they are reported but barely scored.
+    # Without that distinction the tool flags ordinary newsletters, which
+    # costs far more credibility than the rare case it would catch.
+    authenticated = report.dmarc.result == "pass"
+
     if parsed.reply_to_domain and from_domain and parsed.reply_to_domain != from_domain:
-        reasons.append(RiskReason(
-            "reply_to_mismatch", "high", 20,
-            "Reply-To points to a different domain than From",
-            f"Replies go to {parsed.reply_to_address} rather than "
-            f"{parsed.from_address}. This redirects the conversation to an "
-            f"address the sender controls - the core mechanic of business "
-            f"email compromise.",
-        ))
+        if authenticated:
+            reasons.append(RiskReason(
+                "reply_to_mismatch_authenticated", "info", 0,
+                "Reply-To points to a different domain than From",
+                f"Replies go to {parsed.reply_to_address}. The sending domain "
+                f"passed DMARC, and routing replies to a separate address is "
+                f"normal for bulk and support mail, so this is not scored.",
+            ))
+        else:
+            reasons.append(RiskReason(
+                "reply_to_mismatch", "high", 20,
+                "Reply-To points to a different domain than From",
+                f"Replies go to {parsed.reply_to_address} rather than "
+                f"{parsed.from_address}. This redirects the conversation to an "
+                f"address the sender controls - the core mechanic of business "
+                f"email compromise - and the sender is not authenticated.",
+            ))
 
     # Envelope sender different from the visible From.
     if (parsed.envelope_from_domain and from_domain
             and parsed.envelope_from_domain != from_domain
             and parsed.return_path):
-        reasons.append(RiskReason(
-            "envelope_mismatch", "medium", 10,
-            "Envelope sender does not match the visible From address",
-            f"Mail was sent as {parsed.envelope_from} but displays as "
-            f"{parsed.from_address}. Common in mailing lists, but also in spoofing.",
-        ))
+        if authenticated:
+            reasons.append(RiskReason(
+                "envelope_mismatch_authenticated", "info", 0,
+                "Bounces return to a different domain than From",
+                f"Mail was sent as {parsed.envelope_from}. Separate bounce "
+                f"domains are standard for email service providers, and DMARC "
+                f"passed, so this is not scored.",
+            ))
+        else:
+            reasons.append(RiskReason(
+                "envelope_mismatch", "medium", 10,
+                "Envelope sender does not match the visible From address",
+                f"Mail was sent as {parsed.envelope_from} but displays as "
+                f"{parsed.from_address}, and the sender is not authenticated.",
+            ))
 
     # Display name claiming a brand the domain does not own.
     display = (parsed.from_display_name or "").lower()

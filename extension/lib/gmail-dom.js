@@ -148,6 +148,26 @@ export function onViewChange(callback, { delay = 350 } = {}) {
 }
 
 /**
+ * Where to put the verdict card.
+ *
+ * Deliberately *not* next to the button: the button sits in the header row,
+ * which is a narrow right-aligned cell, so a card placed there is cramped and
+ * clipped. The card belongs in the message's own full-width column, directly
+ * above the body.
+ */
+export function findPanelAnchor() {
+  const msg = [...document.querySelectorAll('[data-message-id]')]
+    .filter((el) => el.offsetParent !== null).pop();
+  if (!msg) return null;
+
+  // .a3s is Gmail's message body. Its container is the full content width.
+  const body = msg.querySelector('.a3s');
+  if (body?.parentElement) return { parent: body.parentElement, before: body };
+
+  return { parent: msg, before: null };
+}
+
+/**
  * Where to put our button. Gmail's toolbars are unlabelled, so anchor on the
  * message header row that holds the reply controls, and fall back to the
  * thread heading.
