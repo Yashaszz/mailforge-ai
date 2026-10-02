@@ -9,7 +9,8 @@
  * without any extra permission.
  */
 
-import { analyse, health, getApiBase, setApiBase } from './lib/api.js';
+import { analyse, authenticateOnly, health, getApiBase, setApiBase } from './lib/api.js';
+import { buildRecord, hashMessageId, storage as research, toCsv } from './lib/research.js';
 import { GmailApiSource } from './lib/sources.js';
 
 const handlers = {
@@ -29,13 +30,50 @@ const handlers = {
   },
 
   async getSettings() {
-    const { source } = await chrome.storage.sync.get({ source: 'session' });
-    return { ok: true, apiBase: await getApiBase(), source };
+    const { source, researchMode } = await chrome.storage.sync.get(
+      { source: 'session', researchMode: false });
+    return { ok: true, apiBase: await getApiBase(), source, researchMode };
   },
 
-  async setSettings({ apiBase, source }) {
+  async setSettings({ apiBase, source, researchMode }) {
     if (apiBase !== undefined) await setApiBase(apiBase);
     if (source !== undefined) await chrome.storage.sync.set({ source });
+    if (researchMode !== undefined) await chrome.storage.sync.set({ researchMode });
+    return { ok: true };
+  },
+
+  /* Research mode: verify both retrievals of one message back to back, so the
+   * bytes are the only variable, and keep measurements only. */
+  async 'research:record'({ messageId, verbatim, rendered }) {
+    const [authVerbatim, authRendered] = await Promise.all([
+      authenticateOnly(verbatim, 'verbatim.eml').catch(() => null),
+      authenticateOnly(rendered, 'rendered.eml').catch(() => null),
+    ]);
+    const record = buildRecord({
+      msgHash: await hashMessageId(messageId, await research.salt()),
+      day: new Date().toISOString().slice(0, 10),
+      verbatim, rendered, authVerbatim, authRendered,
+    });
+    const total = await research.put(record);
+    return { ok: true, record, total };
+  },
+
+  async 'research:stats'() {
+    const records = await research.all();
+    return {
+      ok: true,
+      total: records.length,
+      flipped: records.filter((r) => r.dkim_flipped).length,
+      differing: records.filter((r) => !r.identical).length,
+    };
+  },
+
+  async 'research:export'() {
+    return { ok: true, csv: toCsv(await research.all()) };
+  },
+
+  async 'research:clear'() {
+    await research.clear();
     return { ok: true };
   },
 

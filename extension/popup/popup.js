@@ -13,7 +13,9 @@ async function load() {
   if (res?.ok) {
     $('api').value = res.apiBase;
     $('source').value = res.source;
+    $('research').checked = Boolean(res.researchMode);
   }
+  refreshStats();
   $('source-hint').textContent = HINTS[$('source').value] || '';
 
   try {
@@ -45,3 +47,32 @@ $('save').addEventListener('click', async () => {
 });
 
 load();
+
+async function refreshStats() {
+  const s = await chrome.runtime.sendMessage({ type: 'research:stats' });
+  if (!s?.ok) return;
+  const rate = s.total ? ` (${(100 * s.flipped / s.total).toFixed(1)}%)` : '';
+  $('research-stats').textContent =
+    `${s.total} messages · ${s.differing} copies differ · ${s.flipped} DKIM flips${rate}`;
+}
+
+$('research').addEventListener('change', async () => {
+  await chrome.runtime.sendMessage({ type: 'setSettings', researchMode: $('research').checked });
+});
+
+$('export').addEventListener('click', async () => {
+  const res = await chrome.runtime.sendMessage({ type: 'research:export' });
+  if (!res?.ok) return;
+  const url = URL.createObjectURL(new Blob([res.csv], { type: 'text/csv' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `mailforge-dkim-fidelity-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+});
+
+$('clear').addEventListener('click', async () => {
+  if (!confirm('Delete all recorded research measurements?')) return;
+  await chrome.runtime.sendMessage({ type: 'research:clear' });
+  refreshStats();
+});

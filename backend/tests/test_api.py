@@ -126,3 +126,29 @@ def test_analyze_survives_a_malformed_message():
     assert response.status_code == 200
     assert response.json()["origin"]["client_ip"] is None
     assert response.json()["warnings"]
+
+
+def test_authenticate_returns_only_the_authentication_block():
+    raw = build_message(
+        extra_headers=(
+            "Received: from relay.sender.test (relay.sender.test [45.33.32.44])\n"
+            "\tby mx01.recipient.test with ESMTPS id AAA111;"
+            " Tue, 9 Sep 2026 14:22:29 +0530"
+        )
+    )
+    response = client.post(
+        "/authenticate", files={"file": ("m.eml", io.BytesIO(raw), "message/rfc822")}
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert set(body) >= {"spf", "dkim", "dmarc", "dns_available"}
+    # No scoring and no reputation: this endpoint must stay a pure re-verification.
+    assert "assessment" not in body and "origin" not in body
+
+
+def test_authenticate_rejects_empty_upload():
+    response = client.post(
+        "/authenticate", files={"file": ("m.eml", io.BytesIO(b"  "), "message/rfc822")}
+    )
+    assert response.status_code == 422

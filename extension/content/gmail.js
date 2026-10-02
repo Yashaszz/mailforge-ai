@@ -103,7 +103,50 @@
       userIndex: dom.getUserIndex(),
       ik: token,
     });
-    return { raw, retrieval: source.lastRetrieval || 'unknown' };
+    return {
+      raw,
+      retrieval: source.lastRetrieval || 'unknown',
+      // Kept only so research mode can compare against the rendered copy.
+      showOriginalHtml: source.lastShowOriginalHtml || null,
+    };
+  }
+
+  /* Research mode: compare this message's verbatim bytes with the copy
+   * recovered from Gmail's rendered view. Only runs when the verbatim
+   * download succeeded -- without it there is no ground truth to compare to.
+   * Never blocks or alters the verdict the user is looking at. */
+  async function recordFidelity(host, message, fetched) {
+    if (!/verbatim/i.test(fetched.retrieval) || !fetched.showOriginalHtml) return;
+
+    let rendered;
+    try {
+      rendered = sources.extractRawFromShowOriginal(fetched.showOriginalHtml);
+    } catch {
+      return;                     // page unrecognisable: nothing to measure
+    }
+
+    const note = document.createElement('div');
+    note.className = 'mf-research';
+    note.textContent = 'Research: measuring retrieval fidelity…';
+    host.querySelector('.mf-card')?.appendChild(note);
+
+    try {
+      const res = await send({
+        type: 'research:record',
+        messageId: message.messageId,
+        verbatim: fetched.raw,
+        rendered,
+      });
+      if (!res?.ok) throw new Error(res?.error || 'failed');
+      const r = res.record;
+      note.textContent = `Research: recorded #${res.total} · copies `
+        + (r.identical ? 'identical' : `differ (${r.diff_kind}, ${r.diff_region})`)
+        + ` · DKIM ${r.dkim_verbatim} vs ${r.dkim_rendered}`
+        + (r.dkim_flipped ? ' · FLIPPED' : '');
+      if (r.dkim_flipped) note.classList.add('mf-research-flip');
+    } catch (err) {
+      note.textContent = `Research: not recorded (${err.message || err})`;
+    }
   }
 
   async function analyseOpenMessage() {
@@ -117,8 +160,9 @@
     panel.renderLoading(host);
 
     try {
-      const { apiBase, source } = await settings();
-      const { raw, retrieval } = await getRaw(message, source);
+      const { apiBase, source, researchMode } = await settings();
+      const fetched = await getRaw(message, source);
+      const { raw, retrieval } = fetched;
 
       panel.renderLoading(host, 'Authenticating sender and tracing origin…');
       const res = await send({
@@ -131,6 +175,7 @@
         { hint: res?.hint });
 
       panel.renderResult(host, res.result, { reportBase: apiBase, raw, retrieval });
+      if (researchMode) recordFidelity(host, message, fetched);
     } catch (err) {
       panel.renderError(host, err.message || String(err),
         [err.hint, err.diagnostic && `(${err.diagnostic})`].filter(Boolean).join(' '));

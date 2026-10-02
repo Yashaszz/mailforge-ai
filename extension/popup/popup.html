@@ -24,6 +24,11 @@
   button:hover { background:#1765cc; }
   .hint { font-size:11px; color:#80868b; margin:7px 0 0; }
   footer { padding:10px 15px; font-size:11px; color:#9aa3b0; }
+  .row { display:flex; align-items:center; gap:8px; }
+  .row button { margin-top:6px; }
+  button.secondary { background:#fff; color:#1a73e8; border:1px solid #dadce0; }
+  button.secondary:hover { background:#f1f3f4; }
+  .stats { font:12px 'Roboto Mono',Consolas,monospace; color:#3c4043; margin:8px 0 0; }
 </style>
 </head>
 <body>
@@ -56,6 +61,22 @@
   </select>
   <p class="hint" id="source-hint"></p>
   <button id="save" type="button">Save</button>
+</section>
+
+<section>
+  <label>Research mode</label>
+  <div class="row">
+    <input type="checkbox" id="research" style="width:auto;margin:0">
+    <span>Measure DKIM retrieval fidelity</span>
+  </div>
+  <p class="hint">Each analysis also verifies the copy from Gmail's rendered view
+    and records how it differs. Stores measurements only &mdash; no sender,
+    subject, address or content. Use on your own mailbox.</p>
+  <p class="stats" id="research-stats">&mdash;</p>
+  <div class="row">
+    <button id="export" type="button" class="secondary">Export CSV</button>
+    <button id="clear" type="button" class="secondary">Clear</button>
+  </div>
 </section>
 
 <footer>Open a message in Gmail and press <b>Analyse</b>.</footer>

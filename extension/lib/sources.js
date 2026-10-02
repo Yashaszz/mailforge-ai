@@ -61,6 +61,7 @@ export class SessionSource {
     }
 
     const html = await res.text();
+    this.lastShowOriginalHtml = html;
 
     // Prefer the page's own download link: it serves the message verbatim.
     // Scraping the rendered <pre> cannot be trusted for anything

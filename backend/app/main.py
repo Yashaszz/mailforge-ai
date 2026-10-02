@@ -25,7 +25,14 @@ from fastapi.staticfiles import StaticFiles
 from starlette.concurrency import run_in_threadpool
 
 from .config import VERSION, get_settings
-from .schemas import AnalysisResponse, HealthResponse, SampleOut, build_response
+from .schemas import (
+    AnalysisResponse,
+    AuthenticationOut,
+    HealthResponse,
+    SampleOut,
+    authentication_out,
+    build_response,
+)
 from .services.email_auth import authenticate, configure_dns
 from .services.cross_check import cross_check
 from .services.eml_parser import parse_eml
@@ -151,6 +158,33 @@ async def analyze(
     and risk assessment."""
     raw = await _read_upload(file)
     return await _run_analysis(raw, filename=file.filename)
+
+
+@app.post("/authenticate", response_model=AuthenticationOut, tags=["analysis"])
+async def authenticate_only(
+    file: UploadFile = File(..., description="A raw RFC 5322 message (.eml)"),
+) -> AuthenticationOut:
+    """SPF, DKIM and DMARC only: no risk scoring and no network-reputation lookups.
+
+    Exists for controlled comparisons where the only intended variable is the
+    message bytes -- for example verifying two retrievals of the same message
+    seconds apart, so any difference in the verdict is attributable to the
+    bytes rather than to DNS changing in between.
+    """
+    raw = await _read_upload(file)
+    try:
+        parsed = parse_eml(raw)
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail=f"Could not parse message: {exc}") from exc
+
+    report = await run_in_threadpool(
+        authenticate,
+        parsed,
+        offline=settings.offline,
+        timeout=settings.dns_timeout,
+        spf_querytime=settings.spf_querytime,
+    )
+    return authentication_out(report)
 
 
 async def _run_analysis(raw: bytes, *, filename: str | None) -> AnalysisResponse:

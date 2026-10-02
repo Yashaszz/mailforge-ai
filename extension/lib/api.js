@@ -72,6 +72,21 @@ export async function analyse(raw, filename = 'message.eml') {
   return body;
 }
 
+/**
+ * SPF/DKIM/DMARC only, via POST /authenticate: no scoring, no reputation
+ * lookups. Used by research mode to verify two copies of one message.
+ */
+export async function authenticateOnly(raw, filename = 'message.eml') {
+  const base = await getApiBase();
+  const form = new FormData();
+  form.append('file', new Blob([raw], { type: 'message/rfc822' }), filename);
+  const res = await fetch(`${base}/authenticate`, {
+    method: 'POST', body: form, signal: AbortSignal.timeout(45_000),
+  });
+  if (!res.ok) throw new ApiError(`Verification failed (HTTP ${res.status}).`, { status: res.status });
+  return res.json();
+}
+
 /** Liveness probe, used by the popup. */
 export async function health() {
   const base = await getApiBase();

@@ -216,6 +216,52 @@ def _network_out(intel: NetworkIntel | None) -> NetworkOut | None:
     )
 
 
+def authentication_out(report: AuthReport) -> AuthenticationOut:
+    """The authentication block on its own, shared by /analyze and /authenticate."""
+    return AuthenticationOut(
+        spf=SpfOut(
+            result=report.spf.result,
+            detail=report.spf.detail,
+            client_ip=report.spf.client_ip,
+            mail_from=report.spf.mail_from,
+            helo=report.spf.helo,
+            domain=report.spf.domain,
+            record=report.spf.record,
+        ),
+        dkim=DkimOut(
+            result=report.dkim.result,
+            detail=report.dkim.detail,
+            signatures=[
+                DkimSignatureOut(
+                    index=s.index,
+                    domain=s.domain,
+                    selector=s.selector,
+                    algorithm=s.algorithm,
+                    result=s.result,
+                    detail=s.detail,
+                )
+                for s in report.dkim.signatures
+            ],
+        ),
+        dmarc=DmarcOut(
+            result=report.dmarc.result,
+            detail=report.dmarc.detail,
+            record=report.dmarc.record,
+            record_domain=report.dmarc.record_domain,
+            policy=report.dmarc.policy,
+            subdomain_policy=report.dmarc.subdomain_policy,
+            pct=report.dmarc.pct,
+            spf_alignment=report.dmarc.spf_alignment,
+            dkim_alignment=report.dmarc.dkim_alignment,
+            alignment_mode_spf=report.dmarc.alignment_mode_spf,
+            alignment_mode_dkim=report.dmarc.alignment_mode_dkim,
+            disposition=report.dmarc.disposition,
+        ),
+        dns_available=report.dns_available,
+        notes=report.notes,
+    )
+
+
 def build_response(
     parsed: ParsedEmail,
     report: AuthReport,
@@ -269,48 +315,7 @@ def build_response(
             helo=parsed.helo,
             network=_network_out((networks or {}).get(parsed.client_ip or "")),
         ),
-        authentication=AuthenticationOut(
-            spf=SpfOut(
-                result=report.spf.result,
-                detail=report.spf.detail,
-                client_ip=report.spf.client_ip,
-                mail_from=report.spf.mail_from,
-                helo=report.spf.helo,
-                domain=report.spf.domain,
-                record=report.spf.record,
-            ),
-            dkim=DkimOut(
-                result=report.dkim.result,
-                detail=report.dkim.detail,
-                signatures=[
-                    DkimSignatureOut(
-                        index=s.index,
-                        domain=s.domain,
-                        selector=s.selector,
-                        algorithm=s.algorithm,
-                        result=s.result,
-                        detail=s.detail,
-                    )
-                    for s in report.dkim.signatures
-                ],
-            ),
-            dmarc=DmarcOut(
-                result=report.dmarc.result,
-                detail=report.dmarc.detail,
-                record=report.dmarc.record,
-                record_domain=report.dmarc.record_domain,
-                policy=report.dmarc.policy,
-                subdomain_policy=report.dmarc.subdomain_policy,
-                pct=report.dmarc.pct,
-                spf_alignment=report.dmarc.spf_alignment,
-                dkim_alignment=report.dmarc.dkim_alignment,
-                alignment_mode_spf=report.dmarc.alignment_mode_spf,
-                alignment_mode_dkim=report.dmarc.alignment_mode_dkim,
-                disposition=report.dmarc.disposition,
-            ),
-            dns_available=report.dns_available,
-            notes=report.notes,
-        ),
+        authentication=authentication_out(report),
         cross_check=CrossCheckOut(
             available=(corroboration.available if corroboration else False),
             reporter=(corroboration.reporter if corroboration else None),
