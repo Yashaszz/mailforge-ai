@@ -507,7 +507,13 @@ def _score_network(
 
 #: Server clocks genuinely disagree. Only treat a backwards jump larger than
 #: this as evidence of tampering rather than ordinary skew.
-CLOCK_SKEW_TOLERANCE = timedelta(minutes=10)
+#:
+#: Chosen on the development split of the SpamAssassin + Nazario evaluation,
+#: never on its test split. The original 10 minutes flagged 9.6% of
+#: legitimate 2002 mail, overwhelmingly real clock skew (median 17 minutes);
+#: 30 minutes cuts that to 1.6% while keeping almost all of the detections on
+#: 2005-07 phishing (19.5% -> 17.7%). See eval/results/REPORT.md.
+CLOCK_SKEW_TOLERANCE = timedelta(minutes=30)
 
 
 def _score_relay_consistency(parsed: ParsedEmail, reasons: list[RiskReason]) -> None:

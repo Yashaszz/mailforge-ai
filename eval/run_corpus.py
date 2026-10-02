@@ -59,6 +59,23 @@ SPLIT_SEED = 20261002
 HOLDOUT_FRACTION = 0.7        # 70% frozen as test; 30% available for tuning
 
 
+#: Rule families, for the ablation. Each scored reason code maps to one.
+FAMILIES = {
+    "content": ("urgency_language", "urgency_language_weak"),
+    "identity": ("reply_to_mismatch", "envelope_mismatch", "brand_impersonation",
+                 "display_name_spoof"),
+    "infrastructure": ("helo_mismatch", "suspicious_tld", "non_public_origin", "no_relay_path"),
+    "chain_integrity": ("relay_timestamps_impossible",),
+}
+
+
+def family_of(code: str) -> str:
+    for family, codes in FAMILIES.items():
+        if code in codes:
+            return family
+    return "other"
+
+
 @dataclass(slots=True)
 class Sample:
     uid: str
@@ -82,6 +99,7 @@ class Outcome:
     codes: list[str] = field(default_factory=list)
     hops: int = 0
     error: str | None = None
+    family_points: dict = field(default_factory=dict)
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -149,6 +167,10 @@ def evaluate(sample: Sample) -> Outcome:
     out.score = result.score
     out.level = result.level
     out.codes = [r.code for r in result.reasons if r.points > 0]
+    for reason in result.reasons:
+        if reason.points > 0:
+            fam = family_of(reason.code)
+            out.family_points[fam] = out.family_points.get(fam, 0) + reason.points
     out.hops = len(parsed.received_chain)
     return out
 
@@ -210,6 +232,23 @@ def task(outcomes: list[Outcome], positive: set[str], split: str | None) -> dict
         "n_positive": len(pos), "n_negative": len(neg), "auc": auc(pos, neg),
         "thresholds": {name: confusion(pos, neg, t) for name, t in THRESHOLDS.items()},
     }
+
+
+def ablation(outcomes: list[Outcome]) -> dict:
+    """AUC of each rule family on its own, phishing vs ham, test split only.
+
+    Above 0.5 the family ranks phishing above legitimate mail; below 0.5 it
+    ranks legitimate mail higher -- i.e. it carries signal pointing the wrong
+    way on this corpus.
+    """
+    rows = [o for o in outcomes if o.score is not None and o.split == "test"]
+    pos = [o for o in rows if o.group == "phish"]
+    neg = [o for o in rows if o.group == "ham"]
+    result = {}
+    for family in list(FAMILIES) + ["all"]:
+        pick = (lambda o: o.score) if family == "all" else (lambda o, f=family: o.family_points.get(f, 0))
+        result[family] = auc([pick(o) for o in pos], [pick(o) for o in neg])
+    return result
 
 
 def rule_rates(outcomes: list[Outcome]) -> list[dict]:
@@ -283,6 +322,7 @@ def main() -> int:
         },
         "phish_detection_by_era": {},
         "rules": rule_rates(outcomes),
+        "ablation_auc_test": ablation(outcomes),
         "false_positive_drivers": {},
         "error_samples": [o.error for o in errors[:10]],
     }

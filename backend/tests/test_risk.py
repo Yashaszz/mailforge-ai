@@ -277,3 +277,15 @@ def test_aware_hops_are_still_compared_across_an_unknown_one():
     )
     codes = {r.code for r in assess(parse_eml(raw), _report(dmarc="none", policy=None)).reasons}
     assert "relay_timestamps_impossible" in codes
+
+
+def test_twenty_minute_skew_is_not_treated_as_forgery():
+    """Real 2002-era mail showed a median 17-minute skew between relays."""
+    raw = _chain(
+        "Received: from relay.test (relay.test [45.33.32.9]) by mx.test with ESMTP id B;"
+        " Tue, 9 Sep 2026 10:40:00 +0000",
+        "Received: from origin.test (origin.test [91.198.174.192]) by relay.test with ESMTP id A;"
+        " Tue, 9 Sep 2026 11:00:00 +0000",
+    )
+    codes = {r.code for r in assess(parse_eml(raw), _report(dmarc="none", policy=None)).reasons}
+    assert "relay_timestamps_impossible" not in codes
