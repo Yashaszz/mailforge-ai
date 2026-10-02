@@ -246,3 +246,34 @@ def test_undated_hops_do_not_trigger_a_false_positive():
     )
     codes = {r.code for r in assess(parse_eml(raw), _report()).reasons}
     assert "relay_timestamps_impossible" not in codes
+
+
+def test_unknown_timezone_stamps_do_not_crash_or_false_alarm():
+    """Regression: a `-0000` stamp parses naive and used to raise TypeError,
+    crashing the whole analysis. Found by the SpamAssassin corpus run, where it
+    hit about one legitimate message in five."""
+    raw = _chain(
+        "Received: from relay.test (relay.test [45.33.32.9])\n"
+        "\tby mx01.recipient.test with ESMTP id BBB222;"
+        " Tue, 9 Sep 2026 09:00:00 -0000",
+        "Received: from origin.test (origin.test [91.198.174.192])\n"
+        "\tby relay.test with ESMTP id AAA111;"
+        " Tue, 9 Sep 2026 11:00:00 +0000",
+    )
+    result = assess(parse_eml(raw), _report(dmarc="none", policy=None))
+    codes = {r.code for r in result.reasons}
+    assert "relay_timestamps_impossible" not in codes
+
+
+def test_aware_hops_are_still_compared_across_an_unknown_one():
+    """Skipping a naive hop must not hide a forgery between the hops around it."""
+    raw = _chain(
+        "Received: from a.test (a.test [45.33.32.9]) by mx.test with ESMTP id C;"
+        " Tue, 9 Sep 2026 09:00:00 +0000",
+        "Received: from b.test (b.test [45.33.32.10]) by a.test with ESMTP id B;"
+        " Tue, 9 Sep 2026 10:00:00 -0000",
+        "Received: from c.test (c.test [91.198.174.192]) by b.test with ESMTP id A;"
+        " Tue, 9 Sep 2026 11:00:00 +0000",
+    )
+    codes = {r.code for r in assess(parse_eml(raw), _report(dmarc="none", policy=None)).reasons}
+    assert "relay_timestamps_impossible" in codes

@@ -524,7 +524,12 @@ def _score_relay_consistency(parsed: ParsedEmail, reasons: list[RiskReason]) -> 
     part of the chain was written by the sender rather than by a relay.
     """
     hops = parsed.received_chain
-    timed = [h for h in hops if h.timestamp is not None]
+    # Only timezone-aware stamps can be ordered. A `-0000` offset (RFC 5322:
+    # "local zone unknown") or a missing one parses naive, and treating it as
+    # UTC could misplace it by hours and raise a false forgery alarm, so those
+    # hops are left out of the comparison. Skipping a hop is safe: the
+    # ordering must hold across non-adjacent hops too.
+    timed = [h for h in hops if h.timestamp is not None and h.timestamp.tzinfo is not None]
     if len(timed) < 2:
         return
 

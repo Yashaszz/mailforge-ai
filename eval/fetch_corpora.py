@@ -53,10 +53,24 @@ FILES: list[tuple[str, str, str]] = [
 
 
 def fetch(url: str, path: Path) -> None:
+    """Download atomically.
+
+    Bytes land in a .part file that is renamed only once complete, and checked
+    against Content-Length when the server sends one. An interrupted download
+    must never be mistaken for a finished file on the next run -- a silently
+    truncated corpus would corrupt every number computed from it.
+    """
+    partial = path.with_name(path.name + ".part")
     request = urllib.request.Request(url, headers={"User-Agent": "Mailforge-eval/0.1"})
-    with urllib.request.urlopen(request, timeout=120) as response, path.open("wb") as out:
+    with urllib.request.urlopen(request, timeout=120) as response, partial.open("wb") as out:
+        expected = response.headers.get("Content-Length")
         while chunk := response.read(1 << 16):
             out.write(chunk)
+    if expected is not None and partial.stat().st_size != int(expected):
+        got = partial.stat().st_size
+        partial.unlink(missing_ok=True)
+        raise OSError(f"truncated download: {got} of {expected} bytes")
+    partial.replace(path)
 
 
 def sha256(path: Path) -> str:
