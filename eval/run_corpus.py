@@ -356,9 +356,91 @@ def main() -> int:
         json.dumps(summary, indent=2, default=lambda v: None if isinstance(v, float) and math.isnan(v) else v),
         encoding="utf-8")
 
+    (RESULTS / f"corpus_{stamp}_report.md").write_text(render_report(summary), encoding="utf-8")
     print_summary(summary)
-    print(f"\nWrote {RESULTS / f'corpus_{stamp}.csv'} and the summary JSON.")
+    print(f"\nWrote {RESULTS / f'corpus_{stamp}.csv'}, the summary JSON and the markdown report.")
     return 0
+
+
+def render_report(s: dict) -> str:
+    """Every number in the write-up comes from here, never from hand-copying."""
+    c = s["counts"]
+    t = s["tasks"]["phish_vs_ham"]["test"]
+    a = s["tasks"]["phish_vs_ham"]["all"]
+
+    def band_row(band: str, m: dict) -> str:
+        lo, hi = m["recall_ci"]
+        flo, fhi = m["fpr_ci"]
+        return (f"| {band} | {pct(m['precision'])} | {pct(m['recall'])} [{pct(lo)}–{pct(hi)}] | "
+                f"{pct(m['fpr'])} [{pct(flo)}–{pct(fhi)}] | {pct(m['f1'])} |")
+
+    def lift(value) -> str:
+        return "∞" if value is None or value == math.inf else f"{value:.2f}"
+
+    lines = [
+        "# Corpus evaluation — Layer 1 time-independent signals",
+        "",
+        f"Generated {s['generated']} by `eval/run_corpus.py`. Do not edit by hand.",
+        "",
+        "## Method",
+        "",
+        "- Live DNS **off**: the corpora date from 2002–2025, so re-verifying SPF/DKIM/DMARC today "
+        "would measure each domain's current DNS, not the message's authenticity when sent.",
+        "- Network reputation **off**: it describes an IP's use today, not at sending time.",
+        "- Measured: identity, infrastructure, relay-chain integrity and content signals only.",
+        "- Rules were written before these corpora were seen. One hyperparameter — the relay "
+        "clock-skew tolerance — was then chosen on the **development** split. Results are on the "
+        "**held-out test** split unless stated.",
+        f"- Exact duplicates removed by SHA-256: {c['duplicates_removed']}.",
+        f"- Split seed {s['method']['split_seed']}, {int(100 * s['method']['holdout_fraction'])}% held out.",
+        "",
+        "## Data",
+        "",
+        "| Corpus / class | Messages |",
+        "| --- | --- |",
+        *[f"| {k} | {v} |" for k, v in c["composition"].items()],
+        f"| **Total unique** | **{c['messages']}** ({c['errors']} errors) |",
+        "",
+        "## Phishing vs legitimate — held-out test split",
+        "",
+        f"AUC **{t['auc']:.3f}** ({t['n_positive']} phishing, {t['n_negative']} legitimate). "
+        f"Full-corpus AUC {a['auc']:.3f}.",
+        "",
+        "| Band | Precision | Recall [95% CI] | False-positive rate [95% CI] | F1 |",
+        "| --- | --- | --- | --- | --- |",
+        *[band_row(b, m) for b, m in t["thresholds"].items()],
+        "",
+        "## Ablation — AUC of each rule family alone (test split)",
+        "",
+        "Above 0.5 a family ranks phishing above legitimate mail; below 0.5 it points the wrong way.",
+        "",
+        "| Family | AUC |",
+        "| --- | --- |",
+        *[f"| {f} | {v:.3f} |" for f, v in s["ablation_auc_test"].items()],
+        "",
+        "## Rule firing rates (full corpus)",
+        "",
+        "| Rule | Legitimate | Phishing | Spam | Lift (phish / legit) |",
+        "| --- | --- | --- | --- | --- |",
+        *[f"| `{r['code']}` | {pct(r['ham'])} | {pct(r['phish'])} | {pct(r['spam'])} | "
+          f"{lift(r['lift_phish_vs_ham'])} |" for r in s["rules"]],
+        "",
+        "## Phishing recall at High-Risk+ by year",
+        "",
+        "| Year | n | Recall [95% CI] | Mean score |",
+        "| --- | --- | --- | --- |",
+        *[f"| {e} | {v['n']} | {pct(v['recall_high_risk'])} "
+          f"[{pct(v['recall_ci'][0])}–{pct(v['recall_ci'][1])}] | {v['mean_score']:.1f} |"
+          for e, v in s["phish_detection_by_era"].items()],
+        "",
+        "## Sources and licences",
+        "",
+        "- SpamAssassin public corpus, https://spamassassin.apache.org/old/publiccorpus/ — message "
+        "copyright remains with the senders; used offline only and not redistributed.",
+        "- J. Nazario, Phishing Corpus, https://monkey.org/~jose/phishing/ — CC-BY-4.0.",
+        "",
+    ]
+    return "\n".join(lines)
 
 
 def pct(x: float) -> str:
@@ -383,6 +465,18 @@ def print_summary(s: dict) -> None:
             print(f"  {band:12s} {pct(m['precision']):>9} {pct(m['recall']):>8} "
                   f"{pct(m['fpr']):>8} {pct(m['f1']):>7}   "
                   f"{m['tp']}/{m['fp']}/{m['tn']}/{m['fn']}")
+
+    t = s["tasks"]["phish_vs_ham"]["test"]
+    print(f"\nHELD-OUT TEST SPLIT, PHISHING vs HAM   AUC={t['auc']:.3f}  "
+          f"(positives={t['n_positive']}, negatives={t['n_negative']})")
+    for band, m in t["thresholds"].items():
+        lo, hi = m["fpr_ci"]
+        print(f"  {band:12s} precision {pct(m['precision'])}  recall {pct(m['recall'])}  "
+              f"FPR {pct(m['fpr'])} [{pct(lo)}-{pct(hi)}]")
+
+    print("\nABLATION: AUC of each rule family alone (test split, phishing vs ham)")
+    for family, value in s["ablation_auc_test"].items():
+        print(f"  {family:16s} {value:.3f}")
 
     print("\nPHISHING RECALL AT High-Risk+ BY ERA")
     for era, e in s["phish_detection_by_era"].items():
